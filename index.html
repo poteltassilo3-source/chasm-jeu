@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chasm — le jeu de stratégie en équipe</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#eef1f7;font-family:Fredoka,system-ui,sans-serif;color:#2b2d42;user-select:none;-webkit-user-select:none}
+body{background-image:linear-gradient(#e3e7f1 2px,transparent 2px),linear-gradient(90deg,#e3e7f1 2px,transparent 2px);background-size:56px 56px}
+button{font-family:inherit;cursor:pointer}
+.wrap{max-width:1280px;margin:0 auto;padding:12px;height:100vh;min-height:620px;display:flex;flex-direction:column;gap:10px}
+/* barre du haut */
+.top{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap}
+.pill{background:#fff;border-radius:20px;padding:8px 16px;box-shadow:0 6px 18px rgba(30,40,80,.12);display:flex;align-items:center;gap:10px;font-weight:700;font-size:19px}
+.pill.goal{flex:1;min-width:280px}
+.trees{display:flex;gap:6px}
+.trees span{width:36px;height:36px;border-radius:50%;background:#e6e9f2;display:grid;place-items:center;font-size:19px;transition:transform .3s}
+.trees span.on{background:#3ecf6e;transform:scale(1.1)}
+.en span{font-size:24px;transition:opacity .2s}.en span.off{opacity:.15;filter:grayscale(1)}
+.next{background:#3ecf6e;color:#fff;border:0;border-radius:20px;padding:10px 22px;font-size:20px;font-weight:700;box-shadow:0 5px 0 #27a453}
+.next:active{transform:translateY(3px);box-shadow:0 2px 0 #27a453}
+.next.go{animation:pulse 1.1s infinite}
+@keyframes pulse{50%{transform:scale(1.07)}}
+/* plateau */
+.board{flex:1;min-height:420px;background:#fff;border-radius:28px;box-shadow:0 10px 30px rgba(30,40,80,.12);position:relative;overflow:hidden}
+.board svg{width:100%;height:100%;display:block}
+.seg{cursor:pointer}
+.seg .ring{transition:transform .15s;transform-box:fill-box;transform-origin:center}
+.seg:hover .ring{transform:scale(1.06)}
+.seg.no{cursor:not-allowed}
+.hint{align-self:center;background:#2b2d42;color:#fff;border-radius:18px;padding:9px 18px;font-weight:600;font-size:17px;max-width:100%;text-align:center;animation:pop .3s both}
+.tip{position:fixed;z-index:30;pointer-events:none;background:#2b2d42;color:#fff;border-radius:14px;padding:8px 12px;font-weight:600;font-size:15px;max-width:280px;display:none}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.shake{animation:shake .35s}
+@keyframes floatup{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-50px)}}
+.fl{position:fixed;z-index:40;pointer-events:none;font-weight:700;font-size:26px;animation:floatup 1s forwards;text-shadow:0 2px 0 #fff}
+/* écrans */
+.screen{position:fixed;inset:0;z-index:50;display:flex;padding:16px;overflow:auto;background:rgba(238,241,247,.85);backdrop-filter:blur(6px)}
+.card{margin:auto;background:#fff;border-radius:30px;padding:28px;max-width:580px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(30,40,80,.22);animation:pop .35s both}
+@keyframes pop{from{transform:scale(.88);opacity:0}to{transform:none;opacity:1}}
+.logo{font-size:56px;font-weight:700;line-height:1}.logo span{color:#e63946}
+.sub{color:#8d93ab;font-weight:600;margin:6px 0 16px}
+.big{font-size:72px;line-height:1}
+h2{font-size:32px;margin:8px 0}
+input{width:100%;font:600 22px Fredoka,sans-serif;text-align:center;padding:14px;border-radius:18px;border:3px solid #e6e9f2;outline:none}
+input:focus{border-color:#e63946}
+.play{width:100%;margin-top:12px;background:#3ecf6e;color:#fff;border:0;border-radius:18px;padding:16px;font-size:24px;font-weight:700;box-shadow:0 6px 0 #27a453}
+.play:active{transform:translateY(4px);box-shadow:0 2px 0 #27a453}
+.play.sec{background:#fff;color:#2b2d42;border:3px solid #e6e9f2;box-shadow:none;font-size:18px;padding:12px}
+.rules{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0 4px}
+.rules div{background:#f4f6fb;border-radius:18px;padding:12px 8px;font-weight:600;font-size:15px;line-height:1.25}
+.rules b{display:block;font-size:34px;margin-bottom:6px}
+.choice{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:#f4f6fb;border:3px solid #e6e9f2;border-radius:20px;padding:16px;margin:10px 0;font-size:19px;font-weight:600;color:#2b2d42}
+.choice:hover{border-color:#9cc9ff;background:#f5f9ff}
+.choice span{font-size:34px}
+.res{display:flex;gap:10px;justify-content:center;margin:12px 0}
+.res div{background:#f4f6fb;border-radius:18px;padding:10px 16px;min-width:110px}
+.res b{display:block;font-size:30px;color:#e63946}.res small{color:#8d93ab;font-weight:600}
+.lesson{display:flex;gap:10px;align-items:center;text-align:left;padding:8px 12px;border-radius:14px;margin:6px 0;background:#f4f6fb;font-weight:600;font-size:15.5px}
+.lesson small{display:block;color:#8d93ab;font-weight:500;font-size:13px}
+.lesson .i{font-size:22px}
+.lesson.ok{background:#e8f9ee;border:2px solid #3ecf6e;color:#1f7a45}.lesson.ok small{color:#2f8f57}
+.lesson.ko{background:#fdecec;border:2px solid #e63946;color:#c0392b}.lesson.ko small{color:#b8505a}
+.debrief{text-align:left;border-radius:20px;padding:12px 14px;margin:10px 0}
+.debrief h3{margin:0 0 6px;font-size:19px}
+.debrief.ok{background:#e8f9ee;border:3px solid #3ecf6e}.debrief.ok h3{color:#1f7a45}
+.debrief.ko{background:#fdecec;border:3px solid #e63946}.debrief.ko h3{color:#c0392b}
+.debrief li{margin:6px 0;font-weight:600;font-size:15px}
+.debrief.ok li{color:#1f7a45}.debrief.ko li{color:#c0392b}
+.debrief li small{display:block;font-weight:500;font-size:13px;opacity:.9}
+table{width:100%;border-collapse:collapse;font-weight:600}td{padding:6px 8px;border-bottom:2px solid #f0f2f8;text-align:left}td:last-child{text-align:right}
+tr.me td{color:#e63946}
+.foot{color:#a1a7bd;font-size:12px;margin-top:12px}
+.conf{position:fixed;top:-20px;z-index:60;width:10px;height:14px;pointer-events:none;animation:fall 2.6s linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(600deg)}}
+@media(max-width:700px){.pill{font-size:15px;padding:6px 10px}.next{font-size:16px}.hint{font-size:14px}}
+.teams{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:6px}
+.tbtn{background:#f4f6fb;border:3px solid #e6e9f2;border-radius:18px;padding:10px 4px;font:600 13px Fredoka,sans-serif;color:#2b2d42;line-height:1.2}
+.tbtn span{display:block;font-size:34px;margin-bottom:4px}
+.tbtn.on{border-color:var(--c);background:#fff;box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 30%,transparent)}
+@media(max-width:600px){.teams{grid-template-columns:repeat(3,1fr)}}
+#dash{position:fixed;inset:0;z-index:70;overflow:auto;background:#eef1f7;background-image:linear-gradient(#e3e7f1 2px,transparent 2px),linear-gradient(90deg,#e3e7f1 2px,transparent 2px);background-size:56px 56px}
+.dwrap{max-width:1500px;margin:0 auto;padding:18px}
+.dhead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.dlogo{font-size:46px;font-weight:700;line-height:1}.dlogo span{color:#e63946}.dlogo small{font-size:26px;color:#2b2d42;margin-left:8px}
+.dtour{background:#2b2d42;color:#fff;border-radius:18px;padding:10px 20px;font-size:28px;font-weight:700}
+.live{border-radius:99px;padding:6px 12px;font-weight:700;font-size:14px;background:#fff;color:#8d93ab}.live.on{color:#e63946}
+.gear{background:#fff;border:0;border-radius:14px;width:46px;height:46px;font-size:22px;display:grid;place-items:center;text-decoration:none;box-shadow:0 4px 12px rgba(30,40,80,.12)}
+.dgrid{display:grid;grid-template-columns:minmax(320px,.8fr) 1.6fr;gap:16px;align-items:start}
+@media(max-width:1000px){.dgrid{grid-template-columns:1fr}}
+.dcard{background:#fff;border-radius:28px;padding:18px;box-shadow:0 10px 30px rgba(30,40,80,.12)}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:14px;min-height:420px}
+.pcol{display:flex;flex-direction:column;align-items:center;width:30%;animation:pop .5s both}
+.pava{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;font-size:48px;background:#fff;border:5px solid var(--c)}
+.pname{font-weight:700;font-size:17px;text-align:center;margin-top:6px;line-height:1.15}
+.ppts{font-weight:700;color:#e63946;font-size:20px;margin:2px 0 6px}
+.pbar{width:100%;border-radius:16px 16px 0 0;display:flex;justify-content:center;padding-top:8px;transition:height .6s}
+.pbar span{font-size:40px}
+.dtab{width:100%;border-collapse:collapse;font-size:20px}
+.dtab th{font-size:14px;color:#8d93ab;text-transform:uppercase;letter-spacing:.06em;padding:8px;text-align:center}
+.dtab th:nth-child(2){text-align:left}
+.dtab td{padding:12px 8px;border-bottom:2px solid #f0f2f8;text-align:center;font-weight:600}
+.dtab th.cur,.dtab td.cur{background:#fff8e6}
+.dtab tr.first td{background:#effcf3}.dtab tr.first td.cur{background:#e3f7e9}
+.dtab tr.last td{background:#fff3f3}
+.rk{font-size:28px;font-weight:700;width:60px}.mv{font-size:14px;margin-left:4px}
+.mv:empty{display:none}
+.tn{display:flex;align-items:center;gap:10px;text-align:left;font-size:21px}
+.tn small{display:block;color:#8d93ab;font-size:13px;font-weight:500}
+.tava{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-size:30px;border:4px solid var(--c);flex:none}
+.sc{color:#2b2d42}
+.tot{min-width:180px;text-align:left!important}.tot b{font-size:26px;color:#e63946}
+.tbar{height:10px;background:#eef1f7;border-radius:9px;margin-top:4px;overflow:hidden}.tbar i{display:block;height:100%;border-radius:9px;transition:width .8s}
+.admin{margin-top:16px}
+.arow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.arow.small{font-size:15px;background:#f4f6fb;border-radius:12px;padding:6px 10px;margin:4px 0}
+.arow select{font:600 16px Fredoka,sans-serif;padding:8px;border-radius:12px;border:2px solid #e6e9f2}
+.abtn{background:#fff;border:2px solid #e6e9f2;border-radius:12px;padding:8px 14px;font:700 15px Fredoka,sans-serif;cursor:pointer}
+.abtn.g{background:#3ecf6e;color:#fff;border-color:#3ecf6e}.abtn.r{color:#e63946;border-color:#e63946}
+.x{margin-left:auto;background:none;border:0;color:#e63946;font-size:18px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div class="tip" id="tip"></div>
+<div id="scr"></div>
+<script>
+/* ==================================================================
+   Chasm — d'après la présentation « Crossing the Chasm » (Alicia,
+   Tassilo, Patrick · Team Academy). Vous êtes la business team qui
+   organise des événements d'équipe. Règles :
+   • chaque étape coûte de l’argent · les segments dominés rapportent chaque mois
+   • étapes : 🎤 Interviewer → 💬 Positionnement → 🧩 Offre → 🧪 Valider → ⭐ Rassurer
+   • segment dominé = revenu chaque mois + voisins rassurés (⭐ −2)
+   • but : dominer 4 segments avant la fin du mois 8
+================================================================== */
+const SEGS=[
+ {id:'pme',e:'🏢',n:'PME locales',x:610,y:370,col:'#ff9f43',fire:3,size:'nombreuses',cost:[1,2,2],rev:4000,adj:['as','ec'],tip:'PME de 20 à 80 pers. : veulent un événement clé en main, pas le temps d’organiser.'},
+ {id:'as',e:'⚽',n:'Associations',x:845,y:212,col:'#2ecc71',fire:2,size:'nombreuses',cost:[1,1,3],rev:2000,adj:['pme','pa'],tip:'Clubs et sociétés locales : un souper annuel à organiser.'},
+ {id:'ec',e:'🏫',n:'Écoles',x:845,y:520,col:'#3d9bff',fire:2,size:'moyen',cost:[1,2,3],rev:3000,adj:['pme'],tip:'Sorties et journées de classe : il faut que ce soit carré.'},
+ {id:'pa',e:'🎂',n:'Particuliers',x:1080,y:205,col:'#ff6fae',fire:1,size:'très variés',cost:[1,2,3],rev:1500,adj:['as'],tip:'Anniversaires : chacun veut quelque chose de différent. Voisin des associations : leurs membres sont des familles.'},
+ {id:'mu',e:'🌐',n:'Multinationales',x:1080,y:530,col:'#9b6dff',fire:1,size:'énormes',cost:[2,4,6],rev:6000,adj:[],tip:'500+ personnes : appels d’offres longs, exigent de grosses références.'}
+];
+const CRIT=[['🔥','Problème urgent'],['🎯','Assez petit pour être gagné'],['💰','Assez rentable'],['🔗','Ouvre la suite (voisins)']];
+const WHY={
+ pme:[[1,'Pas le temps d’organiser : ils ont besoin de vous maintenant.'],[1,'Un groupe précis : PME de 20 à 80 pers. de la région.'],[1,'Ils ont un budget événement : +4 000 CHF/mois.'],[1,'Ouvre les Associations et les Écoles.']],
+ as:[[0,'Un souper par an : pas très urgent.'],[1,'Groupe précis : clubs et sociétés locales.'],[0,'Petit budget : +2 000 CHF/mois.'],[1,'Voisin des PME.']],
+ ec:[[0,'Décisions lentes, pas urgent.'],[1,'Groupe précis : écoles de la région.'],[1,'Budget correct : +3 000 CHF/mois.'],[1,'Voisin des PME.']],
+ pa:[[0,'Un anniversaire de temps en temps.'],[0,'Chacun veut autre chose : impossible d’avoir une offre commune.'],[0,'Petits budgets : +1 500 CHF/mois.'],[0,'Ne mène à aucun autre segment.']],
+ mu:[[0,'Appel d’offres dans 6 mois.'],[0,'Bien trop gros pour une petite équipe sans références.'],[1,'Gros budget : +6 000 CHF/mois.'],[0,'Ne mène à aucun autre segment.']]
+};
+const QUOTE={pme:'« On veut souder l’équipe, mais personne n’a le temps d’organiser. Il nous faut du clé en main ! »',as:'« Notre souper annuel, c’est toujours la galère. »',ec:'« Une journée de classe ? Il faut que tout soit carré. »',pa:'« Un anniversaire… mais chacun veut quelque chose de différent. »',mu:'« Montrez-nous 10 références internationales, on décidera dans 6 mois. »'};
+const DATA={
+ pme:{
+  int:{good:['Combien d’événements d’équipe organisez-vous par an ?','Quel budget prévoyez-vous par événement ?','Qu’est-ce qui vous fait perdre le plus de temps quand vous en organisez un ?'],
+   bad:[['Préférez-vous un escape game ou un karaoké ?','Vous parlez de votre solution avant de comprendre leur problème.'],['Si on vous l’offrait, vous le feriez ?','Accepter un cadeau ne prouve rien : seul un paiement valide le marché.'],['Est-ce que notre concept vous plaît ?','Un compliment n’est pas un achat : ça ne vous apprend rien.']]},
+  off:{q:'« Notre RH n’a pas une minute : on veut juste choisir une date, et que tout soit pensé et réservé pour nous. Et notre comptable veut une seule facture claire. »',
+   good:['📝 Conception du programme','📍 Réservation du lieu','🧾 Une seule facture claire'],
+   bad:[['🚌 Transport des participants','Personne n’en a parlé : l’événement a lieu près de leurs bureaux.'],['💶 Le prix le plus bas possible','Ils n’ont pas parlé de prix : leur problème, c’est le temps.'],['🎥 Film souvenir filmé par drone','Joli, mais personne ne l’a demandé.']]},
+  pro:{good:['💬 Témoignage du directeur d’une PME de 40 personnes de la région','📸 Photos d’un événement réalisé pour une PME','🛡️ Garantie « satisfait ou remboursé »'],
+   bad:[['🚀 Témoignage enthousiaste d’une start-up tech','Une start-up est visionnaire : son avis ne rassure pas une PME prudente.'],['👍 3 000 vues sur votre vidéo TikTok','Des vues ne sont pas des clients satisfaits.'],['🏆 « Le team building le plus innovant de Suisse »','« Innovant » inquiète les pragmatiques : ils veulent réduire le risque.']]},
+  pos:[['les PME locales de 20 à 80 personnes',['toutes les entreprises de Suisse romande','Trop large : un message pour tout le monde ne parle à personne.'],['les start-ups qui aiment tester des nouveautés','Ce sont des visionnaires, pas votre cible pragmatique.']],
+   ['qui n’ont pas le temps d’organiser un événement d’équipe',['qui veulent suivre la dernière tendance','Une tendance n’est pas un problème urgent.'],['qui cherchent le prix le plus bas','Leur problème est le temps, pas le prix.']],
+   ['un événement clé en main, de la conception à la facture',['une animation originale','Une seule pièce : les pragmatiques veulent la solution complète.'],['le concept le plus innovant du marché','Les pragmatiques n’achètent pas l’innovation, mais un résultat fiable.']],
+   ['contrairement à l’organisation en interne qui prend des jours aux RH',['contrairement aux agences, nous sommes jeunes et motivés','Ça parle de vous, pas de ce que le client y gagne.'],['sans aucun concurrent sur le marché','Il y a toujours une alternative : ici, tout faire soi-même.']],
+   ['avant les fêtes, quand tout le monde cherche un événement',['dès que notre site sera en ligne','Ça parle de votre agenda, pas du besoin du client.'],['quand ils auront plus de budget','Si ça peut attendre, ce n’est pas urgent.']]]
+ },
+ as:{
+  int:{good:['Combien de membres viennent à votre souper annuel ?','Combien vos membres acceptent-ils de payer par personne ?','Qu’est-ce qui épuise le plus vos bénévoles ?'],
+   bad:[['Vous préférez un DJ ou un groupe live ?','Vous parlez déjà de solution, avant de connaître leur problème.'],['Vous nous recommanderiez à d’autres clubs ?','Ils ne vous connaissent pas encore : la question arrive trop tôt.'],['Notre idée vous paraît bonne ?','Un compliment ne valide rien : seul un engagement compte.']]},
+  off:{q:'« Nos bénévoles font tout : la cuisine, la déco, l’ambiance… ils n’en peuvent plus. Il faut que petits et grands s’amusent, et nos membres ne paieront pas plus de 40 francs. »',
+   good:['🍽️ Repas pris en charge','🎲 Animation pour tous les âges','💶 Maximum 40 CHF par personne'],
+   bad:[['🧾 Une seule facture pour la comptabilité','C’est le besoin des PME, pas ce qu’ils ont demandé.'],['📚 Activité liée au programme scolaire','C’est un besoin des écoles, pas des associations.'],['🎆 Grand feu d’artifice','Spectaculaire, mais hors budget et pas demandé.']]},
+  pro:{good:['💬 Témoignage du président d’un club voisin','📸 Photos d’un souper déjà organisé','🏷️ Prix par personne affiché dès le départ'],
+   bad:[['📺 Passage à la radio locale','Être connu ne prouve pas que ça marche.'],['🤩 « Nous sommes la start-up la plus créative »','« Créative » ne rassure pas : ils veulent du fiable.'],['📝 Un contrat de 10 pages','Ça complique au lieu de rassurer : ils veulent simple et clair.']]},
+  pos:[['les clubs et sociétés locales',['toutes les associations de Suisse','Trop large pour une petite équipe.'],['les membres qui aiment faire la fête','Ce ne sont pas eux qui achètent : c’est le comité.']],
+   ['dont les bénévoles s’épuisent à organiser le souper annuel',['qui veulent un événement prestigieux','Ce n’est pas leur problème : ils manquent de bras et de budget.'],['qui n’ont jamais fait de fête','Faux : ils en font une chaque année, c’est l’organisation qui pèse.']],
+   ['un souper animé tout compris, à prix fixe par personne',['un DJ de qualité','Une seule pièce : ils veulent du tout compris.'],['une soirée haut de gamme','Hors de leur budget de 40 CHF par personne.']],
+   ['contrairement aux bénévoles qui font tout eux-mêmes',['contrairement aux grands traiteurs','Ce n’est pas leur alternative : aujourd’hui, ils font tout eux-mêmes.'],['mieux que toutes les autres soirées','Trop vague : nommez l’alternative réelle.']],
+   ['avant la saison des soupers d’automne',['quand le club aura gagné le championnat','Aucun lien avec leur besoin.'],['parce que nous lançons notre offre ce mois-ci','Ça parle de vous, pas du client.']]]
+ },
+ ec:{
+  int:{good:['Combien de sorties de classe organisez-vous par année ?','Quelles règles de sécurité devez-vous respecter ?','Qui doit valider une sortie avant qu’elle ait lieu ?'],
+   bad:[['Vos élèves aiment-ils les jeux vidéo ?','Ça parle d’une idée de produit, pas du problème de l’école.'],['Vous seriez partants pour un test gratuit ?','Gratuit ne valide rien : on cherche s’ils paieraient.'],['Vous suivez notre page Instagram ?','Ça parle de vous, pas de leur besoin.']]},
+  off:{q:'« La direction exige des adultes formés pour surveiller, il faut amener 25 élèves sur place, et la journée doit servir à quelque chose en classe. »',
+   good:['🦺 Encadrement certifié','🚌 Transport des élèves','📚 Activité liée au programme'],
+   bad:[['🍽️ Souper avec animation','C’est le besoin des associations, pas des écoles.'],['🧾 Une seule facture pour les RH','Ce n’est pas ce que la direction a demandé.'],['🕹️ Casques de réalité virtuelle','Gadget : rien à voir avec la sécurité ou le programme.']]},
+  pro:{good:['📄 Attestation de sécurité et d’assurance','💬 Lettre d’un enseignant d’une autre école','🧪 Une journée pilote avec une classe'],
+   bad:[['📈 2 000 abonnés Instagram','Des abonnés ne prouvent pas que c’est sûr.'],['🚀 « Un concept jamais vu »','« Jamais vu » = risqué pour une école prudente.'],['💸 Réduction de 50 %','Un prix bas ne rassure pas sur la sécurité.']]},
+  pos:[['les écoles de la région',['tous les jeunes de 6 à 20 ans','Ce ne sont pas eux qui décident ni qui paient.'],['toutes les écoles d’Europe','Trop large pour une petite équipe.']],
+   ['qui cherchent des sorties sûres et utiles pour leurs classes',['qui veulent faire rire les élèves','Ce n’est pas leur critère : sécurité et programme d’abord.'],['qui ont du temps libre en juin','Le temps n’est pas leur problème.']],
+   ['une journée encadrée, transport compris, liée au programme',['une activité fun et tendance','Fun ne suffit pas : la direction veut sécurité et pédagogie.'],['une appli de jeux éducatifs','Ce n’est ni ce que vous vendez, ni ce qu’ils demandent.']],
+   ['contrairement aux enseignants qui organisent tout seuls',['contrairement aux musées, nous sommes plus drôles','Ça compare votre produit, pas la vraie alternative de l’école.'],['personne ne fait ça','Faux : les enseignants le font déjà eux-mêmes.']],
+   ['avant de planifier les sorties du printemps',['dès que nous aurons des subventions','Ça parle de vous, pas du client.'],['quand les élèves s’ennuient','Ce n’est ni un moment précis, ni un besoin urgent.']]]
+ },
+ pa:{
+  int:{good:['Combien de grandes fêtes organisez-vous par an ?','Combien êtes-vous prêts à dépenser pour un anniversaire ?','Qu’est-ce qui vous stresse le plus avant une fête ?'],
+   bad:[['Vous aimez le thème licorne ?','Ça parle d’un thème, pas de leur problème.'],['Vous pourriez liker notre page ?','Un like n’est pas un achat.'],['Notre idée est sympa, non ?','Cette question appelle un compliment : elle ne valide rien.']]},
+  off:{q:'« Ma fille veut un thème pirate, mon fils un karaoké… Chaque fête doit être unique, décorée, et je dois pouvoir vous appeler le samedi. »',
+   good:['🎨 Thème 100 % personnalisé','🎂 Décoration sur mesure','📞 Joignable le week-end'],
+   bad:[['🦺 Encadrement certifié','C’est le besoin des écoles, pas des familles.'],['🧾 Une seule facture pour la comptabilité','Une famille n’a pas de comptable.'],['🌍 Gestion sur plusieurs sites','C’est le besoin des multinationales.']]},
+  pro:{good:['📸 Photos de fêtes déjà réalisées','💬 Avis de familles du quartier','🛡️ Remboursé si l’enfant n’est pas content'],
+   bad:[['🏢 Liste de vos clients entreprises','Une famille ne se reconnaît pas dans une entreprise.'],['📺 Pub au cinéma','La pub ne prouve rien.'],['🤖 « Fête organisée par une IA »','La technologie ne crée pas la confiance.']]},
+  pos:[['les familles qui fêtent un anniversaire',['tout le monde','Trop large : ça ne parle à personne.'],['les entreprises de la région','Ce n’est pas ce segment.']],
+   ['qui veulent une fête unique sans tout préparer',['qui n’aiment pas les enfants','Hors sujet.'],['qui veulent dépenser le moins possible','Le prix n’est pas leur problème principal ici.']],
+   ['une fête à thème entièrement personnalisée',['un beau gâteau','Trop petit : ce n’est qu’une partie de la fête.'],['la fête la plus technologique','Ils veulent du personnalisé, pas de la technologie.']],
+   ['contrairement à la fête faite maison',['contrairement aux autres, nous sommes jeunes','Ça parle de vous.'],['sans aucun concurrent','Faux : la fête faite maison est toujours possible.']],
+   ['avant les anniversaires du mois prochain',['quand nous aurons un local','Ça parle de vous.'],['un jour, peut-être','Pas urgent du tout.']]]
+ },
+ mu:{
+  int:{good:['Combien de sites et d’équipes faut-il animer ?','Quel budget annuel prévoyez-vous pour ces événements ?','Comment choisissez-vous vos prestataires ?'],
+   bad:[['Vous trouvez notre start-up cool ?','Un compliment, pas une information.'],['Vous voulez un essai gratuit demain ?','Gratuit ne valide rien, et ils décident sur 6 mois.'],['Préférez-vous du bowling ou du karting ?','Vous parlez de solution avant de connaître le problème.']]},
+  off:{q:'« Nous avons 12 sites. Chaque événement doit passer par nos juristes, et votre façon de travailler doit s’adapter à la nôtre. »',
+   good:['🌍 Gestion sur 12 sites','📑 Contrats & assurances','🛠️ Adaptation à leurs process'],
+   bad:[['💶 Maximum 40 CHF par personne','C’est le besoin des associations.'],['🚌 Transport des élèves','C’est le besoin des écoles.'],['🎆 Grand feu d’artifice','Personne ne l’a demandé.']]},
+  pro:{good:['🏢 Références d’autres grands groupes','📄 Certificats et assurances','🧪 Un pilote sur un seul site'],
+   bad:[['🚀 Avis de start-ups','Les visionnaires ne rassurent pas les grands groupes.'],['👍 Likes Instagram','Ça ne prouve rien.'],['🤩 « Nous sommes disruptifs »','« Disruptif » = risque pour un grand groupe.']]},
+  pos:[['les multinationales de plus de 500 personnes',['toutes les entreprises','Trop large.'],['les start-ups','Ce sont des visionnaires, pas ce segment.']],
+   ['qui doivent animer des équipes sur plusieurs sites',['qui s’ennuient','Ce n’est pas un problème urgent.'],['qui veulent économiser à tout prix','Leur critère est la fiabilité, pas le prix.']],
+   ['des événements sur mesure gérés sur tous leurs sites',['une soirée sympa','Bien trop petit pour leur besoin.'],['la technologie la plus innovante','Ils achètent de la fiabilité, pas de l’innovation.']],
+   ['contrairement aux grandes agences événementielles',['nous n’avons aucun concurrent','Faux : il existe de grandes agences.'],['contrairement aux étudiants','Ça parle de vous, pas du client.']],
+   ['avant leur prochain appel d’offres',['dès que nous aurons 10 employés','Ça parle de vous.'],['quand ils nous connaîtront','Ce n’est pas un moment de leur côté.']]]
+ }
+};
+
+const VAL={
+ pme:{good:['📅 Le directeur réserve une date ferme pour le 12 décembre','💶 La PME verse un acompte de 500 CHF','✍️ La RH signe le bon de commande'],
+  bad:[['😍 « Super idée, on en reparle ! »','Les compliments seuls ne valident pas le marché.'],['📩 « Envoyez-nous une brochure »','Demander une brochure n’engage à rien.'],['👍 Le directeur like votre post LinkedIn','Un like n’est ni un paiement, ni une réservation.']]},
+ as:{good:['📅 Le comité réserve la date du souper','💶 Le trésorier verse un acompte','✍️ Le président signe l’accord'],
+  bad:[['🗣️ « On en parlera à l’assemblée, un jour »','Repousser à « un jour », ce n’est pas s’engager.'],['😍 Les membres trouvent l’idée géniale','Les compliments seuls ne valident pas le marché.'],['📞 « Rappelez-nous l’année prochaine »','Ce n’est pas un engagement.']]},
+ ec:{good:['✍️ La direction signe l’autorisation de sortie','📅 L’école réserve une date pour 2 classes','💶 L’école paie la journée pilote'],
+  bad:[['🙂 Un enseignant trouve que ce serait sympa','Un avis positif n’est pas une décision.'],['📩 « Envoyez un dossier, on verra »','Recevoir un dossier n’engage à rien.'],['✋ Les élèves votent oui à main levée','Ce ne sont pas eux qui décident ni qui paient.']]},
+ pa:{good:['💶 La famille paie un acompte','📅 La date de la fête est bloquée','✍️ Le devis est signé'],
+  bad:[['😍 « Trop mignon, j’adore ! »','Un compliment n’est pas un achat.'],['❤️ Un cœur sur votre story Instagram','Un like n’est pas une réservation.'],['💬 « Peut-être pour l’an prochain »','Ce n’est pas un engagement.']]},
+ mu:{good:['✍️ Le service achats signe un contrat pilote','💶 Un bon de commande pour un premier site','📅 Une date fixée avec le responsable du site'],
+  bad:[['🤝 « Belle présentation, on vous recontacte »','La politesse n’est pas un engagement.'],['📧 Vous êtes ajoutés à une liste de fournisseurs possibles','Être sur une liste n’est pas être choisi.'],['👏 Applaudissements après votre démo','Un compliment ne valide pas le marché.']]}
+};
+const PROFILES=[['Innovators','2,5 %','curieux, technophiles : ils testent tout'],['Early Adopters','13,5 %','visionnaires : ils cherchent un avantage'],['Early Majority','34 %','pragmatiques : ils veulent des preuves'],['Late Majority','34 %','prudents : ils attendent un standard établi'],['Laggards','16 %','sceptiques : ils changent en dernier']];
+const PCOL=['#d6b45c','#3ecf6e','#3d9bff','#9b6dff','#ff6fae'];
+const PERSONAS=[
+ {e:'👩‍💻',n:'Nina, développeuse',q:'J’adore tester les nouveaux concepts, même en version bêta et même s’ils ne sont pas au point.',p:0},
+ {e:'🧪',n:'Léo, étudiant bricoleur',q:'Un nouveau format d’événement ? Je m’inscris juste pour voir ce que ça donne !',p:0},
+ {e:'🚀',n:'Marc, directeur d’une scale-up',q:'Si votre concept nous donne une longueur d’avance sur nos concurrents, je prends le risque.',p:1},
+ {e:'🎨',n:'Claire, fondatrice d’une agence créative',q:'Je veux être la première de la région à offrir ça à mon équipe, ça va faire parler de nous.',p:1},
+ {e:'👩‍💼',n:'Sophie, RH d’une PME de 45 personnes',q:'Montrez-moi ce que vous avez déjà fait pour des entreprises comme la nôtre.',p:2},
+ {e:'📋',n:'Thomas, responsable admin d’une PME',q:'Il me faut un devis clair, des références vérifiables et une garantie.',p:2},
+ {e:'🧮',n:'Paul, gérant d’une fiduciaire',q:'On le fera quand ce sera devenu la norme, avec un prestataire reconnu.',p:3},
+ {e:'🏦',n:'Hélène, directrice d’une banque régionale',q:'Quand tout notre secteur l’aura adopté, on regardera.',p:3},
+ {e:'🪚',n:'Jean, patron d’une menuiserie',q:'Des team buildings ? On s’en est toujours passé, et ça marche très bien comme ça.',p:4}
+];
+const POS_SLOTS=['Pour qui ?','Quel problème ?','Quel bénéfice ?','Face à quelle alternative ?','Pourquoi maintenant ?'];
+function note(ok,t,w){S.log.push({ok,t,w:w||'',m:S.m})}
+const SN=['🎤 Interviews','💬 Positionnement','🧩 Offre complète','🧪 Validation','⭐ Preuves'];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const SG=Object.fromEntries(SEGS.map(s=>[s.id,s]));
+const STEP=['🎤','💬','🧩','🧪','⭐'],STEPN=['Interviewer','Positionnement','Offre complète','Valider','Rassurer'];
+const GOAL=4,MONTHS=8,START=22000,BURN=2000;
+const PRICE=[2000,1000,3000,2000,2000];
+const COSTUP=0.25,REVUP=0.25;
+const PS=i=>Math.round(PRICE[i]*(1+COSTUP*nd())/500)*500;
+const price=(s)=>PS(Math.min(cur(s),4));
+const segRev=s=>Math.min(2*s.rev,Math.round(s.rev*(1+REVUP*(S.age[s.id]||0))/100)*100);
+const EV={
+ 1:{e:'🚗',t:'Le conseil d’une mentore',d:'« Tesla a commencé par un Roadster cher pour quelques passionnés, puis la Model S, puis la Model 3 pour le grand public. Qu’est-ce que vous en retenez pour vous ? »',o:[['🌍','Viser le grand public dès le premier jour','bad'],['🎯','Commencer par une niche précise, puis élargir étape par étape','good']],
+    r:{bad:'Non : Tesla n’a pas visé tout le monde d’un coup. Chaque produit a servi de tremplin vers le marché suivant.',good:'Exact ! Chaque produit Tesla a servi de tremplin vers le marché suivant. L’iPhone a fait pareil : visionnaires en 2007, puis l’App Store, puis le standard. La mentore vous offre 2 000 CHF.'}},
+ 2:{e:'😍',t:'« Super idée, bravo ! »',d:'3 organisateurs adorent… mais personne n’a signé.',o:[['📈','On les compte comme clients','bad'],['📅','On leur demande un acompte','good']],
+    r:{bad:'Confondre intérêt et achat = fausse validation. Seul un paiement ou une signature valide le marché.',good:'Exact : un client valide le marché quand il paie, réserve ou signe.'}},
+ 3:{e:'📢',t:'Un salon national',d:'« Stand à 3 000 CHF pour toucher toute la Suisse ! »',o:[['🌍','On prend le stand (−3 000)','bad'],['🎯','On reste sur notre cible','good']],
+    r:{bad:'Vouloir toucher tout le monde = message flou et budget brûlé.',good:'Exact : un segment prioritaire, des moyens concentrés.'}},
+ 4:{e:'🏃',t:'Une multinationale pressée',d:'« 40 événements dans 3 villes, dès le mois prochain ! »',o:[['🚀','On accepte tout (−3 000)','bad'],['🧱','D’abord 2 événements pilotes','good']],
+    r:{bad:'Grandir trop vite = qualité et trésorerie fragilisées. 3 000 CHF perdus.',good:'Exact : consolider avant d’étendre.'}},
+ 5:{e:'😤',t:'Un client râle',d:'« L’animation était top, mais transport et facture… la galère ! »',o:[['🧩','On complète l’offre (−2 000)','good'],['🤷','Pas notre métier','bad']],
+    r:{bad:'Se focaliser sur le produit = besoins oubliés. Il vous faudra +1 ⭐ partout.',good:'Exact : les pragmatiques achètent une solution complète.'}},
+ 6:{e:'💸',t:'Une agence de pub vous démarche',d:'« Pour 3 000 CHF, on vous garantit 10 000 abonnés sur les réseaux sociaux ! »',o:[['📣','On achète la campagne (−3 000)','bad'],['💬','On investit plutôt dans les témoignages de nos clients','good']],
+    r:{bad:'Brûler le budget marketing = acquisition coûteuse sans focus. Des abonnés ne sont pas des clients.',good:'Exact : concentrer les moyens. Un témoignage de client vaut plus que 10 000 abonnés.'}},
+ 7:{e:'🙈',t:'Votre équipe s’emballe',d:'« Ajoutons de la réalité virtuelle à nos événements : les fans de technologie vont adorer ! »',o:[['🥽','Oui, ça va impressionner tout le monde (−2 000)','bad'],['🛎️','Non : on renforce plutôt la fiabilité et le suivi client','good']],
+    r:{bad:'Négliger les pragmatiques = risque perçu trop élevé. Eux veulent des preuves, des références et du support, pas des gadgets.',good:'Exact : preuves, références et support, c’est ce qui rassure les pragmatiques.'}},
+ 8:{e:'🤖',t:'Un camarade critique Moore',d:'« Avec les réseaux sociaux et l’IA, plus besoin de se concentrer : on peut tester tout le monde en même temps ! »',o:[['✅','Il a raison : on vise tout le monde','bad'],['⚖️','Le numérique accélère les tests, mais les clients attendent encore plus de preuves','good']],
+    r:{bad:'Pas tout à fait : le numérique accélère les tests, mais il augmente aussi les attentes de preuve, de sécurité et de service. Se concentrer reste utile.',good:'Exact, c’est notre regard critique : le modèle de 1991 simplifie la réalité, mais le numérique et l’IA augmentent les attentes de preuve, de sécurité et de service.'}}
+};
+/* ===== état ===== */
+let S;
+function fresh(t){S={seen:{},dd:{},err:{q:0,pos:0,o:0,v:0,p:0,bowl:0},prof:0,profN:0,bowlAsk:0,stM:0,age:{},log:[],tries:{},team:t,m:1,cash:START,p:{},done:{},dm:{},order:[],st:0,ev:{},extra:0,end:false,first:null,spread:new Set()};SEGS.forEach(s=>{S.p[s.id]=[0,0,0,0,0];S.dd[s.id]=[0,0,0,0,0]})}
+const need=(s,i)=>i===0?s.cost[0]:i===1?1:i===2?s.cost[1]:i===3?1:Math.max(0,s.cost[2]-(s.adj.some(a=>S.done[a])?2:0)+S.extra);
+const cur=s=>{for(let i=0;i<5;i++)if(S.p[s.id][i]<need(s,i))return i;return 5};
+const known=s=>S.p[s.id][0]>=need(s,0);
+const nd=()=>SEGS.filter(s=>S.done[s.id]).length;
+const inc=()=>SEGS.reduce((a,s)=>a+(S.done[s.id]?segRev(s):0),0);
+const fmt=n=>Math.round(n).toLocaleString('fr-CH').replace(/ | /g,' ');
+const $=id=>document.getElementById(id);
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let AC=null;function snd(f,d=.08,t='triangle',v=.06){try{AC=AC||new (window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.value=f;g.gain.value=v;g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
+const chime=()=>[523,659,784,1046].forEach((f,i)=>setTimeout(()=>snd(f,.18),i*90)),boo=()=>snd(150,.3,'sawtooth',.05);
+function confetti(n=90){const c=['#ff9f43','#3ecf6e','#3d9bff','#ff6fae','#e63946'];for(let i=0;i<n;i++){const d=document.createElement('div');d.className='conf';d.style.left=Math.random()*100+'vw';d.style.background=c[i%5];d.style.animationDuration=(1.6+Math.random()*1.6)+'s';d.style.animationDelay=Math.random()*.4+'s';d.style.borderRadius=Math.random()<.5?'50%':'3px';document.body.appendChild(d);setTimeout(()=>d.remove(),4300)}}
+function floatTxt(x,y,t,col){const d=document.createElement('div');d.className='fl';d.style.left=(x-20)+'px';d.style.top=(y-30)+'px';d.style.color=col;d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),1000)}
+let hintMsg='';
+
+/* ===== accueil ===== */
+function home(){
+ if(location.hash==='#classement')return dashboard();
+ let saved='';try{saved=localStorage.getItem('chasm_teamid')||''}catch(e){}
+ if(saved)PICK=saved;
+ $('app').innerHTML='';
+ $('scr').innerHTML=`<div class="screen"><div class="card" style="max-width:640px">
+  <div class="logo">chasm<span>.</span></div>
+  <div class="sub">Vous êtes la business team qui organise des événements d’équipe. Franchissez le gouffre !</div>
+  <div style="display:flex;justify-content:center;margin:-4px 0 10px"><span style="background:#2b2d42;color:#fff;border-radius:99px;padding:6px 16px;font-weight:700">🔁 Tour ${TOUR}</span></div>
+  <div style="font-weight:700;margin-bottom:6px">Choisissez votre équipe</div>
+  <div class="teams">${TEAMS.map(t=>`<button class="tbtn ${PICK===t.id?'on':''}" style="--c:${t.c}" onclick="pickTeam('${t.id}')"><span>${t.e}</span>${t.n}</button>`).join('')}</div>
+  <div class="rules">
+   <div><b>💰</b>Chaque étape coûte de l’argent</div>
+   <div><b>🎤💬🧩🧪⭐</b>5 étapes par segment : faites le bon choix à chacune</div>
+   <div><b>🎄🎄🎄🎄</b>Domine 4 segments en 8 mois</div>
+  </div>
+  <div class="sub" style="margin:10px 0 0">Un segment dominé rapporte chaque mois, et de plus en plus · chaque nouveau segment coûte plus cher que le précédent · à 0 CHF, c’est la faillite · discutez à 2 avant chaque clic !</div>
+  <button class="play" id="playBtn" onclick="go()" ${PICK?'':'disabled style="opacity:.45"'}>JOUER</button>
+  <a class="play sec" style="display:block;text-decoration:none;box-sizing:border-box" href="#classement">📺 Classement des équipes</a>
+  <div class="foot">D’après la présentation « Crossing the Chasm » d’Alicia, Tassilo et Patrick</div></div></div>`;
+}
+let M0=null;
+function month0(){
+ const one=[0,1,2,3,4].map(p=>shuffle(PERSONAS.filter(x=>x.p===p))[0]);
+ const extra=shuffle(PERSONAS.filter(x=>!one.includes(x)))[0];
+ M0={list:shuffle(one.concat([extra])),i:0,ok:0};
+ $('scr').innerHTML=`<div class="screen"><div class="card"><div class="big">🗓️</div><h2>Mois 0 : vos premiers contacts</h2>
+  <div class="sub" style="color:#2b2d42;font-size:17px">Avant de vous lancer, 6 personnes réagissent à votre idée. Pour chacune, trouvez son profil dans le <b>cycle d’adoption</b>.<br>Chaque bonne réponse vous rapporte <b>+500 CHF</b> de départ.</div>
+  ${PROFILES.map((p,k)=>`<div class="lesson"><span class="i" style="color:${PCOL[k]}">●</span><div>${p[0]} <span style="color:#8d93ab">(${p[1]})</span><small>${p[2]}</small></div></div>`).join('')}
+  <button class="play" onclick="m0q()">C’est parti</button></div></div>`;
+}
+function m0q(fb){
+ const c=M0.list[M0.i];
+ $('scr').innerHTML=`<div class="screen"><div class="card" style="${fb?'animation:none':''}"><div class="sub">Contact ${M0.i+1}/6 · Cycle d’adoption</div><div class="big">${c.e}</div><h2 style="font-size:24px">${c.n}</h2>
+  <div class="sub" style="color:#2b2d42;font-size:19px;font-style:italic">« ${c.q} »</div>
+  ${fb||PROFILES.map((p,k)=>`<button class="choice" onclick="m0a(${k})"><span style="color:${PCOL[k]}">●</span>${p[0]}<span style="margin-left:auto;font-size:14px;color:#8d93ab">${p[1]}</span></button>`).join('')}</div></div>`;
+}
+function m0a(k){
+ const c=M0.list[M0.i],ok=k===c.p;if(ok)M0.ok++;snd(600,.06);
+ if(!ok)note(false,`👥 ${c.n.split(',')[0]} était <b>${PROFILES[c.p][0]}</b> (vous avez répondu ${PROFILES[k][0]})`,`« ${c.q} » : ${PROFILES[c.p][2]}.`);
+ m0n();
+}
+function m0n(){
+ M0.i++;if(M0.i<6)return m0q();
+ S.prof=M0.ok;S.cash+=M0.ok*500;if(M0.ok>=5)note(true,`👥 ${M0.ok}/6 profils du cycle d’adoption reconnus au mois 0`);
+ $('scr').innerHTML=`<div class="screen"><div class="card"><div class="big">📝</div><h2>Réponses enregistrées</h2>
+  <div class="sub" style="color:#2b2d42;font-size:18px">Votre bonus de départ dépend de vos réponses. Le détail sera dans le bilan, à la fin.</div>
+  <div class="lesson"><span class="i">🚀</span><div>Innovators et Early Adopters = visionnaires<small>Ils achètent une vision et acceptent le risque. Ils sont à gauche du gouffre.</small></div></div>
+  <div class="lesson"><span class="i">🏢</span><div>Early Majority = pragmatiques<small>Ils achètent une solution éprouvée et veulent réduire le risque. C’est là qu’on gagne : à droite du gouffre.</small></div></div>
+  <div class="sub">Le passage des uns aux autres est une rupture : c’est le Chasm.</div>
+  <button class="play" onclick="$('scr').innerHTML='';render();showEv()">Ouvrir la carte</button></div></div>`;
+}
+let PICK='';
+function pickTeam(id){PICK=id;snd(600,.06);try{localStorage.setItem('chasm_teamid',id)}catch(e){}home()}
+function go(){const t=TEAMS.find(x=>x.id===PICK);if(!t)return;
+ fresh(t.n);S.teamId=t.id;S.tour=TOUR;hintMsg='👆 Cliquez sur un segment pour voir s’il ferait un bon premier marché';snd(523,.1);month0()}
+
+/* ===== rendu ===== */
+function render(){
+ if(!S)return;
+ $('app').innerHTML=`<div class="top">
+  <div class="pill goal">🎯 Domine 4 segments <div class="trees">${[0,1,2,3].map(i=>`<span class="${i<nd()?'on':''}">🎄</span>`).join('')}</div></div>
+  <div class="pill">📅 Mois ${S.m}/${MONTHS}</div>
+  <div class="pill" style="color:${S.cash<8000?'#e63946':'inherit'}">💰 ${fmt(S.cash)}</div>
+  <div class="pill">📈 +${fmt(inc())}/mois · 🧾 −${fmt(BURN)}</div>
+  <button class="next ${S.cash<1500?'go':''}" onclick="nextMonth()">${S.m<MONTHS?'Mois suivant ▶':'Fin 🏁'}</button></div>
+  <div class="hint">${hintMsg}</div><div class="board">${board()}</div>`;
+}
+function board(){
+ const best=Math.max(0,...SEGS.map(s=>{if(S.done[s.id])return 1;const t=need(s,0)+need(s,1)+need(s,2)+need(s,3)+need(s,4);return t?S.p[s.id].reduce((a,b,i)=>a+Math.min(b,need(s,i)),0)/t:0}));
+ const pl=Math.round(best*8);
+ const lines=[['pme','as'],['pme','ec'],['as','pa']].map(([a,b])=>{const A=SG[a],B=SG[b],lit=S.done[a]||S.done[b];return `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="${lit?'#3ecf6e':'#d4d9e6'}" stroke-width="8" stroke-dasharray="16 12" stroke-linecap="round"/>`}).join('');
+ return `<svg viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid meet">
+  <rect x="0" y="0" width="360" height="700" fill="#eafaf0"/><rect x="450" y="0" width="750" height="700" fill="#fff4f4"/>
+  <text x="180" y="40" text-anchor="middle" font-size="26" font-weight="700" fill="#27a453">VISIONNAIRES</text>
+  <text x="180" y="64" text-anchor="middle" font-size="15" font-weight="600" fill="#6fbf8a">achètent une vision</text>
+  <text x="825" y="40" text-anchor="middle" font-size="26" font-weight="700" fill="#e63946">PRAGMATIQUES</text>
+  <text x="825" y="64" text-anchor="middle" font-size="15" font-weight="600" fill="#e9737d">Bon premier marché : 🔥 urgent · 🎯 gagnable · 💰 rentable · 🔗 ouvre la suite</text>
+  <path d="M360 0 L385 80 L365 160 L390 240 L368 320 L392 400 L366 480 L388 560 L370 640 L385 700 L435 700 L428 640 L452 560 L426 480 L452 400 L428 320 L450 240 L428 160 L452 80 L450 0Z" fill="#1d1f33"/>
+  <text x="408" y="560" text-anchor="middle" font-size="22" font-weight="700" fill="#fff" transform="rotate(-90 408 560)" letter-spacing="4">THE CHASM</text>
+  ${Array.from({length:8},(_,i)=>i<pl?`<rect x="${352+i*13.5}" y="${352}" width="11" height="36" rx="3" fill="#c98a4b" stroke="#8a5a2b" stroke-width="2"/>`:'').join('')}
+  <g class="seg ${S.st<3&&S.stM!==S.m?'':'no'}" onclick="sellSt(event)" onmousemove="tip(event,'Visionnaires : achètent vite (+2 000 CHF, une fois par mois), mais ne te font pas traverser le gouffre.')" onmouseleave="tip()">
+   <g class="ring"><circle cx="180" cy="370" r="92" fill="#c9f2d7" stroke="#2ecc71" stroke-width="7"/>
+   <text x="180" y="378" text-anchor="middle" font-size="58">🚀</text></g>
+   <text x="180" y="495" text-anchor="middle" font-size="21" font-weight="700" fill="#27a453">Start-ups</text>
+   <text x="180" y="520" text-anchor="middle" font-size="16" font-weight="600" fill="#6fbf8a">${S.st>=3?'toutes ont acheté':S.stM===S.m?'déjà vendu ce mois':'+2 000 CHF · 1×/mois'}</text></g>
+  ${SEGS.map(seg).join('')}
+ </svg>`;
+}
+function seg(s){
+ const d=S.done[s.id],c=cur(s),k=known(s);
+ const steps=[0,1,2,3,4].map(i=>{const n=need(s,i),p=Math.min(S.p[s.id][i],n),ok=p>=n;const x=s.x-90+i*45,y=s.y+104;
+  const lbl=ok?'✓':(i>0&&!k)?'?':`${p}/${n}`;
+  return `<circle cx="${x}" cy="${y}" r="20" fill="${ok?'#3ecf6e':i===c?'#ffd166':'#eef1f7'}" stroke="${i===c&&!d?'#e6a700':'#fff'}" stroke-width="3"/>
+   <text x="${x}" y="${y+2}" text-anchor="middle" dominant-baseline="middle" font-size="17">${STEP[i]}</text>
+   <text x="${x}" y="${y+40}" text-anchor="middle" font-size="14" font-weight="700" fill="${ok?'#27a453':'#8d93ab'}">${lbl}</text>`}).join('');
+ return `<g class="seg ${d?'no':''}" id="g-${s.id}" onclick="clickSeg('${s.id}',event)" onmousemove="tip(event,'${s.tip.replace(/'/g,'’')}')" onmouseleave="tip()">
+  <g class="ring"><circle cx="${s.x}" cy="${s.y}" r="${d?78:70}" fill="${d?s.col:hexA(s.col,.18)}" stroke="${s.col}" stroke-width="7"/>
+  <text x="${s.x}" y="${s.y+6}" text-anchor="middle" dominant-baseline="middle" font-size="${d?62:54}">${d?'🎄':s.e}</text></g>
+  <text x="${s.x}" y="${s.y-88}" text-anchor="middle" font-size="21" font-weight="700" fill="${s.col}">${s.n}</text>
+  ${''&&WHY[s.id].map((w,i)=>`<circle cx="${s.x-54+i*36}" cy="${s.y-118}" r="15" fill="${w[0]?'#c9f2d7':'#f1f2f6'}" stroke="${w[0]?'#3ecf6e':'#d4d9e6'}" stroke-width="2"/><text x="${s.x-54+i*36}" y="${s.y-117}" text-anchor="middle" dominant-baseline="middle" font-size="15" opacity="${w[0]?1:.35}">${CRIT[i][0]}</text>`).join('')}
+  ${d?`<text x="${s.x}" y="${s.y+112}" text-anchor="middle" font-size="22" font-weight="700" fill="#27a453">DOMINÉ ✓</text><text x="${s.x}" y="${s.y+136}" text-anchor="middle" font-size="16" font-weight="700" fill="#27a453">+${fmt(segRev(s))} CHF/mois ↗</text>`:steps+`<text x="${s.x}" y="${s.y+158}" text-anchor="middle" font-size="14" font-weight="700" fill="${S.cash>=price(s)?'#2b2d42':'#e63946'}">${STEP[Math.min(c,4)]} ${fmt(price(s))} CHF</text>`}
+ </g>`;
+}
+function hexA(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`}
+function tip(e,t){const el=$('tip');if(!e||!t){el.style.display='none';return}el.textContent=t;el.style.display='block';el.style.left=Math.min(innerWidth-300,e.clientX+16)+'px';el.style.top=(e.clientY+16)+'px'}
+
+/* ===== actions ===== */
+function clickSeg(id,e){
+ const s=SG[id];if(S.done[id])return;
+ if(!S.seen[id])return info(id);
+ const i=cur(s),pr=PS(i);
+ if(S.cash<pr){hint(`💰 Pas assez d’argent : cette étape coûte ${fmt(pr)} CHF. Passez au mois suivant pour encaisser vos revenus.`);bump();boo();return render()}
+ if(!S.dd[id][i]&&!(i===4&&need(s,4)===0))return decide(id,i);
+ S.cash-=pr;
+ if(!S.order.length)S.spread.add(id);
+ const firstEver=!Object.values(S.p).some(a=>a.some(Boolean));
+ S.p[id][i]++;snd(500+i*160,.09);const el=document.querySelector('#g-'+id+' .ring');const bb=el?el.getBoundingClientRect():{x:innerWidth/2,y:innerHeight/2,width:0,height:0};floatTxt(bb.x+bb.width/2,bb.y+bb.height/2,'−'+fmt(pr),'#e63946');
+ const nx=cur(s);
+ if(nx===0)hint(`🎤 Interviews en cours : on comprend leur problème avant de construire.`);
+ else if(nx===1)hint(`🎤 ✓ Problème compris. Suite : 💬 écrire votre positionnement.`);
+ else if(nx===2&&i===1)hint(`💬 ✓ Positionnement clair. Suite : 🧩 offre complète.`);
+ else if(nx===2)hint(`🧩 Offre en construction (encore ${need(s,2)-S.p[id][2]} × ${fmt(PS(2))} CHF). Les pragmatiques veulent tout le service.`);
+ else if(nx===3)hint(`🧩 ✓ Offre complète. Suite : 🧪 vendre un événement pilote et vérifier que le client s’engage.`);
+ else if(nx===4)hint(`🧪 ✓ Marché validé. Suite : ⭐ rassurer, car ils veulent voir des clients comme eux satisfaits.`);
+ hintMsg+=` · reste ${fmt(S.cash)} CHF`;
+ if(cur(s)===5){S.done[id]=1;S.dm[id]=S.m;S.order.push(id);S.bowlAsk=1;confetti();chime();note(true,`🎄 ${s.n} dominé au mois ${S.m}`);
+  hint(`🎄 ${s.n} dominé !`);
+  if(nd()>=GOAL){render();return setTimeout(()=>finish(true),1300)}
+  render();if(S.bowlAsk){S.bowlAsk=0;return bowl()}}
+ render();
+}
+function info(id){
+ const s=SG[id],w=WHY[id],n=w.filter(x=>x[0]).length;snd(600,.06);
+ $('scr').innerHTML=`<div class="screen"><div class="card" style="max-width:560px">
+  <div class="big">${s.e}</div><h2>${s.n}</h2><div class="sub" style="font-style:italic;color:#2b2d42">${QUOTE[id]}</div>
+  <div style="font-weight:700;margin:6px 0 4px;text-align:left">Est-ce un bon premier marché ? À vous de juger avec les 4 critères :</div>
+  ${w.map((x,i)=>`<div class="lesson"><span class="i">${CRIT[i][0]}</span><div>${CRIT[i][1]}<small>${x[1]}</small></div></div>`).join('')}
+  <div class="sub" style="margin:10px 0 0">${S.order.length?'Rappel : un segment voisin d’un segment dominé demande moins de preuves 🎳':'Moore : choisissez UN segment, le plus facile à dominer, et concentrez-vous dessus.'}</div>
+  <button class="play" onclick="S.seen['${id}']=1;$('scr').innerHTML='';clickSeg('${id}')">On y va !</button>
+  <button class="play sec" onclick="$('scr').innerHTML=''">Regarder un autre segment</button></div></div>`;
+}
+let DEC=null;
+function decide(id,i){
+ const s=SG[id];let opts,k,title,sub;
+ const D=DATA[id];
+ if(i===0){const g=shuffle(D.int.good).slice(0,2),b=shuffle(D.int.bad).slice(0,2);opts=shuffle(g.map(t=>({t,g:1})).concat(b.map(x=>({t:x[0],g:0,w:x[1]}))));k=2;
+  title='🎤 Quelles questions poser ?';sub=`Vous rencontrez des clients « ${s.n} ». Choisissez les <b>2 questions</b> qui vous apprendront vraiment leur problème.`}
+ else if(i===1)return position(id);
+ else if(i===3){const V=VAL[id],g=shuffle(V.good).slice(0,2),b=shuffle(V.bad).slice(0,2);opts=shuffle(g.map(t=>({t,g:1})).concat(b.map(x=>({t:x[0],g:0,w:x[1]}))));k=2;
+  title='🧪 Le marché est-il validé ?';sub=`Vous vendez un premier <b>événement pilote</b> aux clients « ${s.n} ». Voici leurs réactions. Lesquelles prouvent qu’ils s’engagent vraiment ? Choisissez les <b>2</b>.`}
+ else if(i===2){opts=shuffle(D.off.good.map(t=>({t,g:1})).concat(D.off.bad.map(x=>({t:x[0],g:0,w:x[1]}))));k=3;
+  title='🧩 Que mettre dans l’offre ?';sub=`Relisez ce qu’ils vous ont dit en interview :<br><i>${D.off.q}</i><br>Choisissez les <b>3 éléments</b> qui répondent à leurs besoins.`}
+ else{const g=shuffle(D.pro.good).slice(0,2),b=shuffle(D.pro.bad).slice(0,2);opts=shuffle(g.map(t=>({t,g:1})).concat(b.map(x=>({t:x[0],g:0,w:x[1]}))));k=2;
+  title='⭐ Comment les rassurer ?';sub=`Les clients « ${s.n} » sont prudents. Choisissez les <b>2 preuves</b> qui les rassureront vraiment.`}
+ LASTSEG=id;DEC={id,i,opts,k,sel:new Set()};drawDec(title,sub);
+}
+function drawDec(title,sub){
+ const d=DEC,first=!!title;if(title){d.title=title;d.sub=sub}
+ $('scr').innerHTML=`<div class="screen"><div class="card" style="max-width:600px;${first?'':'animation:none'}"><div class="big" style="font-size:54px">${SG[d.id].e}</div><h2>${d.title}</h2><div class="sub" style="color:#2b2d42;font-size:16.5px">${d.sub}</div>
+  ${d.opts.map((o,j)=>`<button class="choice ${d.sel.has(j)?'sel':''}" data-g="${o.g}" onclick="togDec(${j})" style="${d.sel.has(j)?'border-color:#3d9bff;background:#eef6ff':''}"><span>${d.sel.has(j)?'🔵':'⚪'}</span>${o.t}</button>`).join('')}
+  <button class="play" ${d.sel.size!==d.k?'disabled style="opacity:.45"':''} onclick="valDec()">Valider (${fmt(PS(d.i))} CHF)</button>
+  <button class="play sec" onclick="DEC=null;$('scr').innerHTML=''">Annuler</button></div></div>`;
+}
+let POS=null;
+function position(id){
+ LASTSEG=id;POS={id,pick:[-1,-1,-1,-1,-1],opts:POS_SLOTS.map((_,k)=>{const r=DATA[id].pos[k];return shuffle([{t:r[0],g:1},{t:r[1][0],g:0,w:r[1][1]},{t:r[2][0],g:0,w:r[2][1]}])})};
+ drawPos(true);
+}
+function drawPos(first){
+ const P=POS,s=SG[P.id],w=k=>P.pick[k]<0?'<span style="color:#b0b6c9">______</span>':`<b style="color:#3d9bff">${P.opts[k][P.pick[k]].t}</b>`;
+ const full=P.pick.every(x=>x>=0);
+ $('scr').innerHTML=`<div class="screen"><div class="card" style="max-width:680px;${first?'':'animation:none'}">
+  <div class="big" style="font-size:50px">${s.e}</div><h2>💬 Écrivez votre positionnement</h2>
+  <div class="sub" style="color:#2b2d42;font-size:16px">Choisissez le bon morceau pour chaque trou. Le but : un de ces clients doit comprendre en une phrase <b>pour qui</b> est l’offre et <b>pourquoi elle est meilleure</b> pour lui.</div>
+  <div style="background:#f4f6fb;border-radius:18px;padding:14px 16px;font-size:18px;line-height:1.55;text-align:left;margin:6px 0 10px">Pour ${w(0)} ${w(1)}, nous proposons ${w(2)}, ${w(3)}. C’est le moment : ${w(4)}.</div>
+  ${POS_SLOTS.map((lab,k)=>`<div style="text-align:left;margin:8px 0 2px;font-weight:700">${k+1}. ${lab}</div>
+   <div style="display:flex;flex-wrap:wrap;gap:6px">${P.opts[k].map((o,j)=>`<button data-g="${o.g}" data-k="${k}" onclick="pickPos(${k},${j})" style="border:3px solid ${P.pick[k]===j?'#3d9bff':'#e6e9f2'};background:${P.pick[k]===j?'#eef6ff':'#fff'};border-radius:14px;padding:8px 12px;font:600 15px Fredoka,sans-serif;color:#2b2d42;text-align:left;flex:1 1 180px">${o.t}</button>`).join('')}</div>`).join('')}
+  <button class="play" ${full?'':'disabled style="opacity:.45"'} onclick="valPos()">Faire le test du client (${fmt(PS(1))} CHF)</button>
+  <button class="play sec" onclick="POS=null;$('scr').innerHTML=''">Annuler</button></div></div>`;
+}
+function pickPos(k,j){POS.pick[k]=j;snd(520,.04);drawPos(false)}
+function valPos(){
+ const P=POS,s=SG[P.id];if(!P.pick.every(x=>x>=0))return;
+ const pp=PS(1);if(S.cash<pp){$('scr').innerHTML='';hint(`💰 Pas assez d’argent (${fmt(pp)} CHF) : passez au mois suivant.`);return render()}
+ S.cash-=pp;if(!S.order.length)S.spread.add(P.id);
+ const bad=P.pick.map((j,k)=>({k,o:P.opts[k][j]})).filter(x=>!x.o.g);
+ let html;
+ if(!bad.length){S.dd[P.id][1]=1;S.p[P.id][1]++;chime();if(!S.tries[P.id+1])note(true,`💬 Positionnement · ${s.n} : réussi du premier coup`);
+  html=`<div class="big">✅</div><h2>Test réussi !</h2><div class="sub" style="color:#2b2d42;font-size:18px">Ces clients comprennent votre offre. On continue !</div>`}
+ else{S.err.pos++;boo();S.tries[P.id+1]=(S.tries[P.id+1]||0)+1;
+  bad.forEach(b=>note(false,`💬 Positionnement · ${s.n} : ${POS_SLOTS[b.k]} « ${b.o.t} »`,b.o.w));
+  html=`<div class="big">❌</div><h2>Le client ne comprend pas…</h2><div class="sub" style="color:#2b2d42;font-size:18px">${bad.length} morceau${bad.length>1?'x':''} de la phrase ne convien${bad.length>1?'nent':'t'} pas. Lesquels ? À vous de trouver !</div><div class="sub">${fmt(pp)} CHF dépensés.</div>`}
+ POS=null;
+ $('scr').innerHTML=`<div class="screen"><div class="card">${html}<button class="play" onclick="$('scr').innerHTML='';afterDec()">OK</button></div></div>`;
+}
+function togDec(j){const d=DEC;d.sel.has(j)?d.sel.delete(j):(d.sel.size<d.k&&d.sel.add(j));snd(520,.04);drawDec()}
+function valDec(){
+ const d=DEC,s=SG[d.id];if(d.sel.size!==d.k)return;
+ const dp=PS(d.i);if(S.cash<dp){$('scr').innerHTML='';hint(`💰 Pas assez d’argent (${fmt(dp)} CHF) : passez au mois suivant.`);return render()}
+ const picked=[...d.sel].map(j=>d.opts[j]),bad=picked.filter(o=>!o.g);
+ S.cash-=dp;if(!S.order.length)S.spread.add(d.id);
+ const firstEver=!Object.values(S.p).some(a=>a.some(Boolean))&&!bad.length;
+ let html;
+ if(!bad.length){S.dd[d.id][d.i]=1;S.p[d.id][d.i]++;chime();
+  const ok=['Bonnes questions ! Vous découvrez leur vrai problème (et ce qu’il leur faut).','','Offre complète : vous répondez exactement à ce qu’ils ont demandé.','Marché validé : ce client s’engage vraiment (il paie, réserve ou signe).','Ces preuves rassurent : des clients comme eux, du concret, moins de risque.'][d.i];
+  const tk=d.id+d.i,tr=S.tries[tk]||0;if(!tr)note(true,`${SN[d.i]} · ${s.n} : réussi du premier coup`,ok);
+  html=`<div class="big">✅</div><h2>Étape validée</h2><div class="sub" style="color:#2b2d42;font-size:18px">Le client est d’accord. On continue !</div>`;
+  if(cur(s)===5){S.done[d.id]=1;S.dm[d.id]=S.m;S.order.push(d.id);S.bowlAsk=1;confetti();note(true,`🎄 ${s.n} dominé au mois ${S.m}`);html+=`<div class="sub" style="font-size:18px;color:#27a453">🎄 ${s.n} dominé !</div>`}
+ } else {S.err[['q','pos','o','v','p'][d.i]]++;boo();S.tries[d.id+d.i]=(S.tries[d.id+d.i]||0)+1;
+  bad.forEach(o=>note(false,`${SN[d.i]} · ${s.n} : « ${o.t} »`,o.w));
+  html=`<div class="big">❌</div><h2>Pas encore…</h2><div class="sub" style="color:#2b2d42;font-size:18px">Le client n’est pas convaincu : l’étape n’est pas validée. Au moins un de vos choix ne va pas. Réfléchissez et réessayez !</div><div class="sub">${fmt(dp)} CHF dépensés.</div>`}
+ DEC=null;
+ $('scr').innerHTML=`<div class="screen"><div class="card">${html}<button class="play" onclick="$('scr').innerHTML='';afterDec()">OK</button></div></div>`;
+}
+let LASTSEG=null;
+function afterDec(){
+ if(S.cash<0)return finish(false,'💸 Plus d’argent : faillite.');
+ if(S.bowlAsk&&nd()<GOAL){S.bowlAsk=0;render();return bowl()}
+ const s=LASTSEG&&SG[LASTSEG];let m='';
+ if(s&&!S.done[s.id]){const nx=cur(s);m=nx===0?'🎤 Recommencez les interviews':nx===1?`Suite pour les ${s.n} : 💬 écrire le positionnement`:nx===2?`Suite pour les ${s.n} : 🧩 l’offre complète`:nx===3?`Suite pour les ${s.n} : 🧪 valider avec un pilote`:`Suite pour les ${s.n} : ⭐ les rassurer`}
+ hint((m?m+' · ':'')+`reste ${fmt(S.cash)} CHF`);
+ if(nd()>=GOAL){render();return setTimeout(()=>finish(true),600)}
+ render();
+}
+function bowl(){
+ const s=SG[S.order[S.order.length-1]];
+ const nb=s.adj.filter(a=>!S.done[a]).map(a=>SG[a].n);
+ const opts=shuffle([
+  ['📋','Documenter nos résultats, puis attaquer un segment voisin',1,'Exact ! Gagner un segment, documenter les résultats, adapter l’offre au segment voisin, puis répéter. Chaque quille tombe grâce aux références de la précédente. Bonus : votre méthode documentée vous fait économiser, +2 000 CHF.'],
+  ['🌐','Foncer sur les multinationales : c’est le plus gros marché',0,'Se développer trop vite : sans références de grands groupes, c’est perdu d’avance. Vous perdez 2 000 CHF.'],
+  ['🌪️','Attaquer tous les autres segments en même temps',0,'Dispersion : la croissance est une succession de conquêtes voisines, pas une dispersion simultanée. Vous perdez 2 000 CHF.']]);
+ window._bowl=opts;
+ $('scr').innerHTML=`<div class="screen"><div class="card"><div class="big">🎳</div><h2>${s.n} dominé ! Et maintenant ?</h2>
+  <div class="sub" style="color:#2b2d42;font-size:17px">Comme au bowling, la première quille doit faire tomber les suivantes. Que fait votre équipe ?</div>
+  ${opts.map((o,j)=>`<button class="choice" onclick="bowlA(${j})"><span>${o[0]}</span>${o[1]}</button>`).join('')}
+  <div class="sub" style="margin:4px 0 0">Discutez à 3, puis choisissez</div></div></div>`;
+}
+function bowlA(j){
+ const o=window._bowl[j];snd(600,.06);if(o[2]){S.cash+=2000}else{S.err.bowl++;S.cash-=2000}
+ note(!!o[2],`🎳 Après une victoire : « ${o[1]} »`,o[3]);
+ $('scr').innerHTML=`<div class="screen"><div class="card"><div class="big">📝</div><h2>Décision enregistrée</h2><div class="sub" style="font-size:18px;color:#2b2d42">Ses conséquences se verront dans votre trésorerie… et dans le bilan.</div>
+  <button class="play" onclick="$('scr').innerHTML='';afterDec()">OK</button></div></div>`;
+}
+function sellSt(e){if(S.st>=3||S.stM===S.m)return;S.stM=S.m;S.st++;S.cash+=2000;snd(900,.1);floatTxt(e.clientX,e.clientY,'+2 000','#27a453');hint('🚀 +2 000 CHF');if(S.st===3)note(false,'🚀 3 ventes aux start-ups','Les visionnaires rapportent un peu d’argent, mais ne font pas traverser le gouffre : leur avis ne rassure pas les pragmatiques.');render()}
+function hint(t){hintMsg=t}
+function bump(id){const b=document.querySelector('.board');if(b){b.classList.remove('shake');void b.offsetWidth;b.classList.add('shake')}}
+function nextMonth(){if(S.end||nd()>=GOAL)return;
+ const g=inc();S.cash+=g-BURN;SEGS.forEach(x=>{if(S.done[x.id])S.age[x.id]=(S.age[x.id]||0)+1});
+ if(S.cash<0)return finish(false,'💸 Plus d’argent : faillite.');
+ if(S.m>=MONTHS)return finish(false,'⏰ Les 8 mois sont passés.');
+ S.m++;snd(700,.1);
+ hintMsg=`📅 Mois ${S.m} : ${g?`+${fmt(g)} de revenus (ils augmentent chaque mois), `:''}−${fmt(BURN)} de frais. Trésorerie : ${fmt(S.cash)} CHF.`;
+ render();if(EV[S.m])showEv();
+}
+function showEv(){
+ const E=EV[S.m];boo();
+ $('scr').innerHTML=`<div class="screen"><div class="card"><div class="big">${E.e}</div><h2>${E.t}</h2><div class="sub" style="font-size:18px">${E.d}</div>
+  ${E.o.map((o,i)=>`<button class="choice" onclick="pickEv(${i})"><span>${o[0]}</span>${o[1]}</button>`).join('')}
+  <div class="sub" style="margin:4px 0 0">Discutez à 3, puis choisissez</div></div></div>`;
+}
+function pickEv(i){
+ const m=S.m,E=EV[m],o=E.o[i],good=o[2]==='good';S.ev[m]=good;
+ if(m===1&&good)S.cash+=2000;if(m===6&&!good)S.cash-=3000;if(m===7&&!good)S.cash-=2000;
+ if(m===3&&!good)S.cash-=3000;if(m===4&&!good)S.cash-=3000;if(m===5&&good)S.cash-=2000;if(m===5&&!good)S.extra=1;
+ snd(600,.06);note(good,`${E.e} Mois ${m} · ${E.t} → « ${o[1]} »`,E.r[o[2]]);
+ $('scr').innerHTML=`<div class="screen"><div class="card"><div class="big">📝</div><h2>Décision enregistrée</h2><div class="sub" style="font-size:19px;color:#2b2d42">On verra au bilan si c’était le bon choix.</div>
+  <button class="play" onclick="$('scr').innerHTML='';render();if(S.cash<0)finish(false,'💸 Plus d’argent : faillite.')">OK</button></div></div>`;
+}
+
+/* ===== fin ===== */
+function finish(win,why){
+ if(S.end)return;S.end=true;
+ const score=win?Math.round(3000+(MONTHS+1-S.m)*1000+S.cash/10):nd()*800+Math.max(0,Math.round(S.cash/20));S.score=score;
+ const f=S.order[0],s2=S.order[1];
+ const L=[
+  [f==='pme','🎯','Bonne tête de pont',f==='pme'?'Les PME : problème très urgent 🔥🔥🔥, beaucoup de clients et 2 voisins.':f?`Vous avez commencé par ${SG[f].n}. Les PME 🔥🔥🔥 étaient plus faciles et ouvraient 2 voisins.`:'Aucun segment dominé.'],
+  [!!f&&S.spread.size<=1&&S.dm[f]<=2,'🧲','Concentration',!!f&&S.spread.size<=1&&S.dm[f]<=2?'Tous vos efforts sur une cible : premier segment dominé dès le mois '+S.dm[f]+'.':'Votre argent était éparpillé avant la première victoire.'],
+  [!!s2&&SG[f].adj.includes(s2),'🎳','Effet bowling',s2&&SG[f].adj.includes(s2)?`Puis ${SG[s2].n}, voisin du premier : ⭐ −2 grâce à vos références.`:'Après le 1er segment, attaquez un voisin (ligne pointillée).'],
+  [S.st<=2,'🚀','Les visionnaires ne suffisent pas',S.st<=2?'Vous n’avez pas compté sur les start-ups.':`${S.st} ventes aux start-ups : de l’argent, mais pas de traversée.`],
+  [Object.values(S.ev).every(Boolean),'🚫','Éviter les pièges',Object.keys(S.ev).length?`${Object.values(S.ev).filter(Boolean).length}/${Object.keys(S.ev).length} imprévus bien gérés.`:'Aucun imprévu rencontré.'],
+  [S.err.q===0&&!!f,'🎤','Poser les bonnes questions',S.err.q?`${S.err.q} mauvaise(s) question(s) : les compliments et le « peut-être un jour » ne valident rien.`:'Fréquence, budget, irritants, critères de choix : vous avez trouvé leur vrai problème.'],
+  [S.err.pos===0&&!!f,'💬','Clarifier positionnement et alternatives',S.err.pos?`${S.err.pos} phrase(s) ratée(s) : trop large, trop vague, ou « aucun concurrent ».`:'Pour qui, quel problème, quel bénéfice, face à quelle alternative, pourquoi maintenant : tout était clair.'],
+  [S.err.o===0&&!!f,'🧩','Vendre une solution complète',S.err.o?`${S.err.o} offre(s) avec des gadgets : les pragmatiques veulent leurs besoins couverts.`:'Vos offres répondaient exactement à ce que les clients avaient dit.'],
+  [S.prof>=5,'👥','Reconnaître les profils du cycle d’adoption',`${S.prof}/6 profils trouvés au mois 0 : visionnaires et pragmatiques n’achètent pas pour les mêmes raisons.`],
+  [S.err.v===0&&!!f,'🧪','Valider avec un vrai engagement',S.err.v?`${S.err.v} fois, un compliment ou un like a été pris pour un achat.`:'Acompte, date réservée, accord signé : vous avez reconnu les vrais engagements.'],
+  [S.err.bowl===0&&S.order.length>=2,'📋','Consolider avant d’étendre',S.err.bowl?'Vous avez voulu grandir trop vite ou partout à la fois.':S.order.length>=2?'Après chaque victoire : documenter les résultats, puis attaquer un voisin.':'Pas encore assez de segments dominés.'],
+  [S.err.p===0&&!!f,'⭐','Rassurer avec des preuves',S.err.p?`${S.err.p} mauvaise(s) preuve(s) : pub, likes ou avis de start-ups ne rassurent pas.`:'Témoignages, photos, garantie, pilote : du concret qui réduit le risque.']
+ ];
+ const ok=L.filter(l=>l[0]).length;
+ const tp=f||[...S.spread][0];
+ if(tp){const w=WHY[tp],n=w.filter(x=>x[0]).length;note(n===4,`🎯 Tête de pont choisie : ${SG[tp].n} (${n}/4 critères)`,w.map((x,i)=>`${x[0]?'✓':'✗'} ${CRIT[i][1]} : ${x[1]}`).join(' · '))}
+ if(S.spread.size>1)note(false,`🧲 ${S.spread.size} segments commencés avant votre première victoire`,'Moore : concentrer toutes ses ressources sur une seule cible jusqu’à la dominer.');
+ else if(f)note(true,`🧲 Concentration : un seul segment attaqué jusqu’à la première victoire`);
+ if(!win)note(false,why);
+ const G_=S.log.filter(x=>x.ok),B_=S.log.filter(x=>!x.ok);
+ const li=x=>`<li>${x.t}${x.w?`<small>${x.w}</small>`:''}</li>`;
+ win?(confetti(160),chime()):boo();
+ $('scr').innerHTML=`<div class="screen"><div class="card" style="max-width:620px">
+  <div class="big">${win?'🏆':'🕳️'}</div><h2 style="color:${win?'#1f7a45':'#c0392b'}">${win?'✅ Objectif atteint : Chasm franchi !':'❌ Objectif non atteint'}</h2>
+  <div class="sub">${win?`4 segments dominés au mois ${S.m}`:why}</div>
+  <div class="res"><div><b id="fs">0</b><small>points</small></div><div><b style="color:${nd()>=GOAL?'#1f7a45':'#c0392b'}">${nd()}/${GOAL}</b><small>segments</small></div><div><b style="color:${ok>=L.length*.75?'#1f7a45':'#c0392b'}">${ok}/${L.length}</b><small>leçons</small></div></div>
+  <h3 style="text-align:left;margin:14px 0 0">📝 Débrief de votre partie</h3>
+  <div class="debrief ok"><h3>✅ Ce qui s’est bien passé</h3>${G_.length?`<ul style="margin:0;padding-left:20px">${G_.map(li).join('')}</ul>`:'<div style="color:#1f7a45">Rien de réussi pour l’instant… retentez votre chance !</div>'}</div>
+  <div class="debrief ko"><h3>❌ À améliorer</h3>${B_.length?`<ul style="margin:0;padding-left:20px">${B_.map(li).join('')}</ul>`:'<div style="color:#1f7a45">Aucune erreur, bravo !</div>'}</div>
+  <h3 style="text-align:left;margin:14px 0 0">🎓 Les leçons de Moore</h3>
+  ${L.map(l=>`<div class="lesson ${l[0]?'ok':'ko'}"><span class="i">${l[0]?'✅':'❌'}</span><span class="i">${l[1]}</span><div>${l[2]}<small>${l[3]}</small></div></div>`).join('')}
+  <div id="send" class="lesson" style="background:#eef6ff"><span class="i">📡</span><div>Envoi du score au classement…</div></div>
+  <div class="lesson" style="background:#fff8e6"><span class="i">⚖️</span><div>Regard critique (notre conclusion)<small>Le modèle de Moore (1991) simplifie la réalité, et se concentrer est risqué si le segment est mal choisi. Le numérique et l’IA accélèrent les tests… mais augmentent les attentes de preuve, de sécurité et de service.</small></div></div>
+  <button class="play" onclick="home()">REJOUER</button></div></div>`;
+ const el=$('fs'),t0=performance.now();(function g(t){const k=Math.min(1,(t-t0)/1200);el.textContent=Math.round(score*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(g)})(t0);
+ sendResult(win);
+}
+
+/* ===== tournoi : équipes, tours, résultats partagés ===== */
+const TEAMS=[{id:'peres',e:'🎅',n:'Les Pères Noël',c:'#e63946'},{id:'rennes',e:'🦌',n:'Les Rennes',c:'#a0522d'},{id:'bonhommes',e:'⛄',n:'Les Bonshommes de neige',c:'#3d9bff'},{id:'lutins',e:'🧝',n:'Les Lutins',c:'#2ecc71'},{id:'pains',e:'🍪',n:'Les Pains d’épices',c:'#ff9f43'}];
+const TG=Object.fromEntries(TEAMS.map(t=>[t.id,t]));
+let DB=null,ISOWN=false,TOUR=1,RES=[],DBOK=false,DBSLOW=false;
+const LKEY='chasm_tournoi_local';
+function loadLocal(){try{const o=JSON.parse(localStorage.getItem(LKEY)||'{}');return{tour:o.tour||1,res:o.res||[]}}catch(e){return{tour:1,res:[]}}}
+function saveLocalT(o){try{localStorage.setItem(LKEY,JSON.stringify(o))}catch(e){}}
+(function(){const L=loadLocal();TOUR=L.tour;RES=L.res})();
+(async()=>{try{
+ if(!(window.claude&&window.claude.use))return;
+ const t=setTimeout(()=>{DBSLOW=true;refresh()},10000);
+ const [db,user]=await Promise.all([window.claude.use('db'),window.claude.use('user')]);
+ if(user){try{ISOWN=!!(await user.isOwner())}catch(e){}}
+ if(!db){clearTimeout(t);return}
+ DB=db;
+ DB.doc('tournoi/config').onSnapshot(d=>{const v=d.exists?d.data()||{}:{};TOUR=Number(v.tour)||1;DBOK=true;clearTimeout(t);refresh()},()=>{});
+ DB.collection('resultats').limit(1000).onSnapshot(q=>{RES=q.docs.filter(d=>d.exists).map(d=>{const v=d.data()||{};return{id:d.id,eq:String(v.eq||''),tour:Number(v.tour)||1,score:Number(v.score)||0,seg:Number(v.seg)||0,win:!!v.win,at:Number(v.at)||0,man:!!v.man}}).filter(r=>TG[r.eq]);DBOK=true;clearTimeout(t);refresh()},()=>{});
+}catch(e){}})();
+function refresh(){if(location.hash==='#classement')drawDash();else if(!S&&!$('app').innerHTML&&$('scr').innerHTML.includes('Choisissez votre équipe'))home()}
+addEventListener('hashchange',()=>{if(location.hash==='#classement')dashboard();else{$('dash')&&$('dash').remove();home()}});
+
+async function addResult(r){
+ if(DB){await DB.collection('resultats').add(r);return true}
+ const L=loadLocal();L.res.push(Object.assign({id:'l'+Date.now()+Math.random().toString(36).slice(2,6)},r));saveLocalT(L);RES=L.res;refresh();return false;
+}
+async function delResult(id){if(DB&&!id.startsWith('l')){await DB.collection('resultats').doc(id).delete()}else{const L=loadLocal();L.res=L.res.filter(x=>x.id!==id);saveLocalT(L);RES=L.res;refresh()}}
+async function setTour(n){n=Math.max(1,n);if(DB){await DB.doc('tournoi/config').set({tour:n})}else{const L=loadLocal();L.tour=n;saveLocalT(L);TOUR=n;refresh()}}
+
+async function sendResult(win){
+ const box=$('send');const r={eq:S.teamId,tour:S.tour||TOUR,score:S.score,seg:nd(),win:!!win,at:Date.now()};
+ try{const online=await addResult(r);
+  if(box)box.outerHTML=online?`<div class="lesson ok"><span class="i">📡</span><div>Score envoyé au classement : ${TG[r.eq].e} ${TG[r.eq].n}, tour ${r.tour}, ${fmt(r.score)} points</div></div>`
+   :`<div class="lesson ko"><span class="i">📝</span><div>Classement en ligne indisponible sur cet ordinateur<small>Donnez votre score au présentateur : ${TG[r.eq].n}, tour ${r.tour}, <b>${fmt(r.score)} points</b></small></div></div>`;
+ }catch(e){if(box)box.outerHTML=`<div class="lesson ko"><span class="i">📝</span><div>Score non envoyé (pas d’accès en écriture)<small>Donnez votre score au présentateur : ${TG[r.eq].n}, tour ${r.tour}, <b>${fmt(r.score)} points</b></small></div></div>`}
+}
+
+/* ===== dashboard à projeter (#classement) ===== */
+function standings(){
+ const maxT=Math.max(TOUR,...RES.map(r=>r.tour),1);
+ const rows=TEAMS.map(t=>{const per=[];for(let k=1;k<=maxT;k++){const rs=RES.filter(r=>r.eq===t.id&&r.tour===k);per.push(rs.length?Math.max(...rs.map(r=>r.score)):null)}
+  const total=per.reduce((a,b)=>a+(b||0),0),wins=RES.filter(r=>r.eq===t.id&&r.win).length,games=RES.filter(r=>r.eq===t.id).length;
+  const prev=per.slice(0,-1).reduce((a,b)=>a+(b||0),0);
+  return{t,per,total,prev,wins,games}});
+ const rank=a=>a.slice().sort((x,y)=>y.total-x.total||y.wins-x.wins);
+ const now=rank(rows),before=rank(rows.map(r=>({...r,total:r.prev})));
+ now.forEach((r,i)=>{r.pos=i+1;r.prevPos=before.findIndex(b=>b.t.id===r.t.id)+1});
+ return{rows:now,maxT};
+}
+let ADMIN=false;
+function dashboard(){
+ if(!$('dash')){const d=document.createElement('div');d.id='dash';document.body.appendChild(d)}
+ $('scr').innerHTML='';$('app').innerHTML='';drawDash();
+}
+function drawDash(){
+ const el=$('dash');if(!el)return;
+ const {rows,maxT}=standings(),top=rows[0]?rows[0].total:0,last=rows[rows.length-1];
+ const pod=[rows[1],rows[0],rows[2]];const H=[150,200,115],M=['🥈','🥇','🥉'];
+ const canEdit=!DB||ISOWN;
+ el.innerHTML=`<div class="dwrap">
+  <div class="dhead"><div><div class="dlogo">chasm<span>.</span> <small>Classement des équipes</small></div><div class="sub" style="margin:2px 0 0">Crossing the Chasm · Team Academy</div></div>
+   <div style="display:flex;gap:10px;align-items:center"><div class="dtour">🔁 Tour ${TOUR}</div><div class="live ${DBOK?'on':''}">${DBOK?'● EN DIRECT':DB?'connexion…':'● MODE LOCAL'}</div>
+   ${canEdit?`<button class="gear" onclick="ADMIN=!ADMIN;drawDash()">⚙️</button>`:''}<a class="gear" href="#" title="Retour au jeu">🎮</a></div></div>
+  <div class="dgrid">
+   <div class="dcard podium">${pod.map((r,i)=>r?`<div class="pcol"><div class="pava" style="--c:${r.t.c}">${r.t.e}</div><div class="pname">${r.t.n}</div><div class="ppts">${fmt(r.total)} pts</div><div class="pbar" style="height:${H[i]}px;background:${r.t.c}"><span>${M[i]}</span></div></div>`:'').join('')}</div>
+   <div class="dcard"><table class="dtab"><tr><th>#</th><th>Équipe</th>${Array.from({length:maxT},(_,k)=>`<th class="${k+1===TOUR?'cur':''}">T${k+1}</th>`).join('')}<th>Total</th></tr>
+    ${rows.map(r=>{const mv=r.prevPos-r.pos;return `<tr class="${r.pos===1&&r.total?'first':''} ${r===last&&r.total!==top?'last':''}">
+     <td class="rk">${r.pos===1&&r.total?'👑':r.pos}<span class="mv" style="color:${mv>0?'#3ecf6e':'#e63946'}">${maxT>1&&mv>0?'▲':maxT>1&&mv<0?'▼':''}</span></td>
+     <td><div class="tn"><span class="tava" style="--c:${r.t.c}">${r.t.e}</span><div>${r.t.n}<small>${r.wins} victoire${r.wins>1?'s':''} · ${r.games} partie${r.games>1?'s':''}${r===last&&r.total!==top?' · 🐌 lanterne rouge':''}</small></div></div></td>
+     ${r.per.map((v,k)=>`<td class="sc ${k+1===TOUR?'cur':''}">${v===null?'—':fmt(v)}</td>`).join('')}
+     <td class="tot"><b>${fmt(r.total)}</b><div class="tbar"><i style="width:${top?Math.max(3,r.total/top*100):0}%;background:${r.t.c}"></i></div></td></tr>`}).join('')}
+   </table>
+   <div class="sub" style="text-align:left;margin:8px 0 0">Points d’un tour = meilleure partie de l’équipe pendant ce tour · Total = somme des tours</div></div>
+  </div>
+  ${ADMIN&&canEdit?adminPanel(maxT):''}
+ </div>`;
+}
+function adminPanel(maxT){
+ const last=RES.slice().sort((a,b)=>b.at-a.at).slice(0,12);
+ return `<div class="dcard admin"><h3 style="margin:0 0 8px">⚙️ Animateur</h3>${window.CHASM_ADMIN_UI?window.CHASM_ADMIN_UI():''}
+  <div class="arow"><button class="abtn" onclick="setTour(TOUR-1)">◀ Tour précédent</button><b style="font-size:20px">Tour ${TOUR}</b><button class="abtn g" onclick="setTour(TOUR+1)">Tour suivant ▶</button></div>
+  <div class="arow"><select id="mEq">${TEAMS.map(t=>`<option value="${t.id}">${t.e} ${t.n}</option>`).join('')}</select>
+   <select id="mT">${Array.from({length:maxT},(_,k)=>`<option ${k+1===TOUR?'selected':''}>${k+1}</option>`).join('')}</select>
+   <input id="mS" type="number" min="0" step="10" placeholder="Points" style="width:120px;font-size:16px;padding:8px">
+   <button class="abtn g" onclick="manualAdd()">➕ Ajouter</button></div>
+  <div class="sub" style="text-align:left;margin:4px 0">Derniers scores reçus :</div>
+  ${last.length?last.map(r=>`<div class="arow small">${TG[r.eq].e} ${TG[r.eq].n} · tour ${r.tour} · <b>${fmt(r.score)}</b> pts ${r.win?'🏆':''}${r.man?' (saisi à la main)':''}<button class="x" onclick="delResult('${r.id}')">✕</button></div>`).join(''):'<div class="sub">Aucun score pour l’instant.</div>'}
+  <div class="arow"><button class="abtn r" onclick="askReset()">🗑️ Réinitialiser le tournoi</button><span id="rst"></span></div></div>`;
+}
+async function manualAdd(){const eq=$('mEq').value,t=Number($('mT').value)||TOUR,sc=Math.round(Number($('mS').value));if(!(sc>=0)||$('mS').value===''){$('mS').style.borderColor='#e63946';return}
+ try{await addResult({eq,tour:t,score:sc,seg:0,win:false,at:Date.now(),man:true})}catch(e){alertBox('Impossible d’enregistrer ce score ici.')}}
+function askReset(){$('rst').innerHTML=`Tout effacer ? <button class="abtn r" onclick="doReset()">Oui, effacer</button> <button class="abtn" onclick="$('rst').innerHTML=''">Non</button>`}
+async function doReset(){const ids=RES.map(r=>r.id);for(const id of ids){try{await delResult(id)}catch(e){}}await setTour(1)}
+function alertBox(t){const r=$('rst');if(r)r.textContent=t}
+home();
+</script>
+</body>
+</html>
