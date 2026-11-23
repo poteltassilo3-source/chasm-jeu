@@ -104,7 +104,8 @@ tr.me td{color:#e63946}
 .pcol{display:flex;flex-direction:column;align-items:center;width:30%;animation:pop .5s both}
 .pava{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;font-size:48px;background:#fff;border:5px solid var(--c)}
 .pname{font-weight:700;font-size:17px;text-align:center;margin-top:6px;line-height:1.15}
-.ppts{font-weight:700;color:#e63946;font-size:20px;margin:2px 0 6px}
+.ppts{font-weight:700;color:#e63946;font-size:20px;margin:2px 0 4px}
+.pper{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin:0 0 8px}.pper span{background:#f3f4f9;border-radius:9px;padding:2px 7px;font-size:13px;font-weight:600;color:#2b2d42;white-space:nowrap}.pper span.cur{background:#fff1c9}.pper span i{font-style:normal;color:#8d93ab;margin-right:3px}
 .pbar{width:100%;border-radius:16px 16px 0 0;display:flex;justify-content:center;padding-top:8px;transition:height .6s}
 .pbar span{font-size:40px}
 .dtab{width:100%;border-collapse:collapse;font-size:20px}
@@ -701,7 +702,7 @@ function drawDash(){
    <div style="display:flex;gap:10px;align-items:center"><div class="dtour">🔁 Tour ${TOUR}</div><div class="live ${DBOK?'on':''}">${DBOK?'● EN DIRECT':DB?'connexion…':'● MODE LOCAL'}</div>
    ${canEdit?`<button class="gear" onclick="ADMIN=!ADMIN;drawDash()">⚙️</button>`:''}<button class="gear" title="Revoir les règles" onclick="INTRO=true;drawDash()">📖</button><a class="gear" href="#" title="Retour au jeu">🎮</a></div></div>
   <div class="dgrid">
-   <div class="dcard podium">${pod.map((r,i)=>r?`<div class="pcol"><div class="pava" style="--c:${r.t.c}">${r.t.e}</div><div class="pname">${r.t.n}</div><div class="ppts">${fmt(r.total)} pts</div><div class="pbar" style="height:${H[i]}px;background:${r.t.c}"><span>${M[i]}</span></div></div>`:'').join('')}</div>
+   <div class="dcard podium">${pod.map((r,i)=>r?`<div class="pcol"><div class="pava" style="--c:${r.t.c}">${r.t.e}</div><div class="pname">${r.t.n}</div><div class="ppts">${fmt(r.total)} pts</div><div class="pper">${r.per.map((v,k)=>`<span class="${k+1===TOUR?'cur':''}"><i>T${k+1}</i>${v===null?'—':fmt(v)}</span>`).join('')}</div><div class="pbar" style="height:${H[i]}px;background:${r.t.c}"><span>${M[i]}</span></div></div>`:'').join('')}</div>
    <div class="dcard"><table class="dtab"><tr><th>#</th><th>Équipe</th>${Array.from({length:maxT},(_,k)=>`<th class="${k+1===TOUR?'cur':''}">T${k+1}</th>`).join('')}<th>Total</th></tr>
     ${rows.slice(3).map(r=>{const mv=r.prevPos-r.pos;return `<tr class="${r.pos===1&&r.total?'first':''} ${r===last&&r.total!==top?'last':''}">
      <td class="rk">${r.pos===1&&r.total?'👑':r.pos}<span class="mv" style="color:${mv>0?'#3ecf6e':'#e63946'}">${maxT>1&&mv>0?'▲':maxT>1&&mv<0?'▼':''}</span></td>
