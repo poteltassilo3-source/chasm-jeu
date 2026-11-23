@@ -82,6 +82,15 @@ tr.me td{color:#e63946}
 .tbtn.on{border-color:var(--c);background:#fff;box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 30%,transparent)}
 @media(max-width:600px){.teams{grid-template-columns:repeat(3,1fr)}}
 #dash{position:fixed;inset:0;z-index:70;overflow:auto;background:#eef1f7;background-image:linear-gradient(#e3e7f1 2px,transparent 2px),linear-gradient(90deg,#e3e7f1 2px,transparent 2px);background-size:56px 56px}
+.intro h1{font-size:44px;margin:0 0 4px;text-align:center}.intro .lead{font-size:22px;text-align:center;color:#555b75;margin:0 0 16px}
+.igrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.istep{background:#fff;border-radius:26px;padding:18px 20px;box-shadow:0 10px 30px rgba(30,40,80,.12);position:relative}
+.istep .n{position:absolute;top:-12px;left:-8px;background:#2b2d42;color:#fff;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:20px}
+.istep .e{font-size:44px;line-height:1.1}.istep h3{margin:6px 0 6px;font-size:24px}.istep p{margin:0;font-size:18px;line-height:1.35;color:#2b2d42}
+.istep p b{color:#e63946}.ibar{display:flex;justify-content:center;gap:14px;margin-top:20px;flex-wrap:wrap}
+.ibig{font-family:inherit;font-size:26px;font-weight:700;border:0;border-radius:22px;padding:16px 34px;cursor:pointer;background:#3ecf6e;color:#fff;box-shadow:0 6px 0 #2a9c50}
+.ibig.s{background:#fff;color:#2b2d42;box-shadow:0 6px 0 #d5d9e6}
+@media(max-width:900px){.igrid{grid-template-columns:1fr}}
 .dwrap{max-width:1500px;margin:0 auto;padding:18px}
 .dhead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .dlogo{font-size:46px;font-weight:700;line-height:1}.dlogo span{color:#e63946}.dlogo small{font-size:26px;color:#2b2d42;margin-left:8px}
@@ -707,6 +716,22 @@ function standings(){
  now.forEach((r,i)=>{r.pos=i+1;r.prevPos=before.findIndex(b=>b.t.id===r.t.id)+1});
  return{rows:now,maxT};
 }
+let INTRO=true;
+function introHTML(){
+ const steps=[
+  ['🎯','Le but','Vous êtes une startup qui organise des événements d’équipe. Pour <b>franchir le gouffre</b> (le « chasm »), il faut <b>dominer 4 segments de clients en 8 mois</b>, sans tomber à 0 CHF.'],
+  ['👥','Les équipes','<b>5 équipes de 2</b>, <b>1 ordinateur</b> par équipe. Choisissez votre personnage : 🎅 🦌 ⛄ 🧝 🍪. Discutez à deux <b>avant chaque clic</b> : chaque choix compte.'],
+  ['🗓️','Mois 0','6 personnes réagissent à votre idée : retrouvez leur profil dans le <b>cycle d’adoption</b> (innovateurs, visionnaires, pragmatiques…). Chaque bonne réponse = <b>+500 CHF</b> de départ.'],
+  ['🗺️','Chaque mois','Sur la carte, choisissez un segment, puis réussissez ses <b>5 étapes</b> : 🎤 Interviewer · 💬 Positionnement · 🧩 Offre complète · 🧪 Valider · ⭐ Rassurer. Le jeu ne donne pas les réponses : <b>réfléchissez avec ce qu’on a présenté</b>.'],
+  ['💰','L’argent','Chaque étape <b>coûte de l’argent</b>, et chaque nouveau segment coûte plus cher. Un segment dominé <b>rapporte chaque mois</b>, de plus en plus. Plus d’argent ? Cliquez sur <b>« Mois suivant »</b>. Attention aux imprévus !'],
+  ['🏆','Le score et les tours','À la fin : un <b>debrief</b> (en vert ce qui est réussi, en rouge ce qui ne l’est pas) et votre score part <b>automatiquement</b> ici. Plus vous gagnez vite et avec de l’argent, plus vous marquez. Plusieurs <b>tours</b> : on additionne.']];
+ return `<div class="dwrap intro">
+  <div class="dhead"><div class="dlogo">chasm<span>.</span> <small>Comment ça se passe ?</small></div><div class="dtour">⏱️ ~20 min par partie</div></div>
+  <div class="lead">Le jeu met en pratique la présentation « Crossing the Chasm » : niche d’abord, puis un segment voisin après l’autre (stratégie du bowling).</div>
+  <div class="igrid">${steps.map((x,i)=>`<div class="istep"><div class="n">${i+1}</div><div class="e">${x[0]}</div><h3>${x[1]}</h3><p>${x[2]}</p></div>`).join('')}</div>
+  <div class="ibar"><div class="ibig s" style="cursor:default">🔗 Ouvrez <u>${location.host||'le lien du jeu'}</u> sur votre ordinateur</div><button class="ibig" onclick="INTRO=false;drawDash()">📺 Voir le classement ▶</button></div>
+ </div>`;
+}
 let ADMIN=false;
 function dashboard(){
  if(!$('dash')){const d=document.createElement('div');d.id='dash';document.body.appendChild(d)}
@@ -714,13 +739,14 @@ function dashboard(){
 }
 function drawDash(){
  const el=$('dash');if(!el)return;
+ if(INTRO){el.innerHTML=introHTML();return}
  const {rows,maxT}=standings(),top=rows[0]?rows[0].total:0,last=rows[rows.length-1];
  const pod=[rows[1],rows[0],rows[2]];const H=[150,200,115],M=['🥈','🥇','🥉'];
  const canEdit=!DB||ISOWN;
  el.innerHTML=`<div class="dwrap">
   <div class="dhead"><div><div class="dlogo">chasm<span>.</span> <small>Classement des équipes</small></div><div class="sub" style="margin:2px 0 0">Crossing the Chasm · Team Academy</div></div>
    <div style="display:flex;gap:10px;align-items:center"><div class="dtour">🔁 Tour ${TOUR}</div><div class="live ${DBOK?'on':''}">${DBOK?'● EN DIRECT':DB?'connexion…':'● HORS LIGNE'}</div>
-   ${canEdit?`<button class="gear" onclick="ADMIN=!ADMIN;drawDash()">⚙️</button>`:''}<a class="gear" href="#" title="Retour au jeu">🎮</a></div></div>
+   ${canEdit?`<button class="gear" onclick="ADMIN=!ADMIN;drawDash()">⚙️</button>`:''}<button class="gear" title="Revoir les règles" onclick="INTRO=true;drawDash()">📖</button><a class="gear" href="#" title="Retour au jeu">🎮</a></div></div>
   <div class="dgrid">
    <div class="dcard podium">${pod.map((r,i)=>r?`<div class="pcol"><div class="pava" style="--c:${r.t.c}">${r.t.e}</div><div class="pname">${r.t.n}</div><div class="ppts">${fmt(r.total)} pts</div><div class="pbar" style="height:${H[i]}px;background:${r.t.c}"><span>${M[i]}</span></div></div>`:'').join('')}</div>
    <div class="dcard"><table class="dtab"><tr><th>#</th><th>Équipe</th>${Array.from({length:maxT},(_,k)=>`<th class="${k+1===TOUR?'cur':''}">T${k+1}</th>`).join('')}<th>Total</th></tr>
