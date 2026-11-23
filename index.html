@@ -703,7 +703,7 @@ function drawDash(){
   <div class="dgrid">
    <div class="dcard podium">${pod.map((r,i)=>r?`<div class="pcol"><div class="pava" style="--c:${r.t.c}">${r.t.e}</div><div class="pname">${r.t.n}</div><div class="ppts">${fmt(r.total)} pts</div><div class="pbar" style="height:${H[i]}px;background:${r.t.c}"><span>${M[i]}</span></div></div>`:'').join('')}</div>
    <div class="dcard"><table class="dtab"><tr><th>#</th><th>Équipe</th>${Array.from({length:maxT},(_,k)=>`<th class="${k+1===TOUR?'cur':''}">T${k+1}</th>`).join('')}<th>Total</th></tr>
-    ${rows.map(r=>{const mv=r.prevPos-r.pos;return `<tr class="${r.pos===1&&r.total?'first':''} ${r===last&&r.total!==top?'last':''}">
+    ${rows.slice(3).map(r=>{const mv=r.prevPos-r.pos;return `<tr class="${r.pos===1&&r.total?'first':''} ${r===last&&r.total!==top?'last':''}">
      <td class="rk">${r.pos===1&&r.total?'👑':r.pos}<span class="mv" style="color:${mv>0?'#3ecf6e':'#e63946'}">${maxT>1&&mv>0?'▲':maxT>1&&mv<0?'▼':''}</span></td>
      <td><div class="tn"><span class="tava" style="--c:${r.t.c}">${r.t.e}</span><div>${r.t.n}<small>${r.wins} victoire${r.wins>1?'s':''} · ${r.games} partie${r.games>1?'s':''}${r===last&&r.total!==top?' · 🐌 lanterne rouge':''}</small></div></div></td>
      ${r.per.map((v,k)=>`<td class="sc ${k+1===TOUR?'cur':''}">${v===null?'—':fmt(v)}</td>`).join('')}
