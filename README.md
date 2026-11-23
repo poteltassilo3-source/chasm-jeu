@@ -3,7 +3,7 @@
 Jeu d’équipe pour la présentation **« Crossing the Chasm »** (Geoffrey A. Moore, 1991) d’Alicia, Tassilo et Patrick · Team Academy.
 Vous êtes la business team qui organise des événements d’équipe : en 8 mois, dominez 4 segments de clients pragmatiques sans faire faillite.
 
-- **5 équipes de 2**, un ordinateur par équipe : 🎅 Les Pères Noël · 🦌 Les Rennes · ⛄ Les Bonshommes de neige · 🧝 Les Lutins · 🍪 Les Pains d’épices
+- **6 équipes de 2**, un ordinateur par équipe : 🎅 Les Pères Noël · 🦌 Les Rennes · ⛄ Les Bonshommes de neige · 🧝 Les Lutins · 🍪 Les Pains d’épices · 🐻‍❄️ Les Ours polaires
 - **Classement en direct** à projeter : ouvrir le site avec **`#classement`** à la fin de l’adresse.
 
 ## Déroulé

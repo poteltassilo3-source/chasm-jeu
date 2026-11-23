@@ -8,7 +8,7 @@
  *   Les scores saisis à la main (man:true) demandent aussi le code animateur.
  * Code animateur : secret ADMIN_CODE (npx wrangler secret put ADMIN_CODE). */
 
-const TEAMS = ['peres', 'rennes', 'bonhommes', 'lutins', 'pains'];
+const TEAMS = ['peres', 'rennes', 'bonhommes', 'lutins', 'pains', 'ours'];
 const json = (o, status = 200) => Response.json(o, { status, headers: { 'Cache-Control': 'no-store' } });
 
 export default {
